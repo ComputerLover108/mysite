@@ -25,7 +25,7 @@ SECRET_KEY = '0$rw@ld+@+r3#*taa%f_)plb#7u8(np_!fww^ytm1c*#97%gz%'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'NCP',
 ]
 
 MIDDLEWARE = [
@@ -54,7 +55,9 @@ ROOT_URLCONF = 'mysite.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            os.path.join(BASE_DIR, "templates"),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -65,6 +68,16 @@ TEMPLATES = [
             ],
         },
     },
+    # {
+    #     'BACKEND': 'django.template.backends.jinja2.Jinja2',
+    #     'APP_DIRS': True,
+    #     'DIRS': [
+    #         os.path.join(BASE_DIR, 'jinja2'),
+    #     ],
+    #     # "OPTIONS": {
+    #     #     'environment': 'mysite.jinja2.environment',
+    #     # },
+    # },    
 ]
 
 WSGI_APPLICATION = 'mysite.wsgi.application'
@@ -74,10 +87,18 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
 DATABASES = {
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    # }
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'HLD',
+        'USER': 'operator',
+        'PASSWORD': '5302469',
+        'HOST': '192.168.0.122',
+        'PORT': '2012',
+    }     
 }
 
 
@@ -103,18 +124,71 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+# LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'zh-hans'
 
-TIME_ZONE = 'UTC'
+# TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+# USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, "static"),
+)
+
+LOGGER_ROOT = '../log/'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    #日志格式
+    'formatters': {
+        'simple': {
+            'format': '[%(lineno)d] [%(module)s:%(funcName)s] [%(levelname)s]- %(message)s'
+        },
+        'standard': {
+            'format': '[%(asctime)s]  [%(lineno)d:%(name)s:%(module)s:%(funcName)s] [%(levelname)s]- %(message)s'
+        },
+        'verbose': {
+            'format': '[%(asctime)s] [%(threadName)s:%(thread)d] [%(lineno)d:%(name)s:%(module)s:%(funcName)s] [%(levelname)s]- %(message)s'
+        }
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOGGER_ROOT, 'mysite.log'),
+            'formatter': 'standard',
+        },
+        'error': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOGGER_ROOT, 'mysite_error.log'),
+            'maxBytes': 1024 * 1024 * 8,
+            'backupCount': 2,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False
+        },
+    }
+}

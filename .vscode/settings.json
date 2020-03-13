@@ -1,0 +1,6 @@
+{
+    "python.venvFolders": [
+        "\\\\192.168.0.122\\pub\\public\\test\\HLDT_env"
+    ],
+    "python.pythonPath": "E:\\public\\test\\py3env\\Scripts\\python.exe"
+}
