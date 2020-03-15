@@ -154,10 +154,10 @@ LOGGING = {
     #日志格式
     'formatters': {
         'simple': {
-            'format': '[%(lineno)d] [%(module)s:%(funcName)s] [%(levelname)s]- %(message)s'
+            'format': '%(message)s'
         },
         'standard': {
-            'format': '[%(asctime)s]  [%(lineno)d:%(name)s:%(module)s:%(funcName)s] [%(levelname)s]- %(message)s'
+            'format': '%(message)s [%(asctime)s]  [%(lineno)d:%(name)s:%(module)s:%(funcName)s] [%(levelname)s]'
         },
         'verbose': {
             'format': '[%(asctime)s] [%(threadName)s:%(thread)d] [%(lineno)d:%(name)s:%(module)s:%(funcName)s] [%(levelname)s]- %(message)s'
@@ -173,7 +173,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': os.path.join(LOGGER_ROOT, 'mysite.log'),
-            'formatter': 'standard',
+            'formatter': 'simple',
         },
         'error': {
             'level': 'ERROR',
