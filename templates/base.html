@@ -10,7 +10,11 @@
 
     <!-- Bootstrap -->
     <link rel="stylesheet" href="{% static 'bootstrap-4.4.1-dist/css/bootstrap.min.css' %}">
-    {% block CSS %}     {% endblock CSS %}
+    {% block CSS %}
+        <style type="text/css">
+            h1,h2,h3 { text-align:center }
+        </style>
+    {% endblock CSS %}
     {% block hJS %}     {% endblock hJS %}
   </head>
   <body>

@@ -47,7 +47,9 @@ def overview(request):
     countries = NovelCoronavirusPneumonia.objects.distinct('countryName').values_list('countryName')
     dimensions = []
     a = []
-    b = list(NovelCoronavirusPneumonia.objects.distinct('update').filter(countryName='中国').filter(countryName='中国').values_list('update','currentConfirmedCount'))
+    b = list(NovelCoronavirusPneumonia.objects\
+        .distinct('update')\
+        .filter(countryName='中国').filter(provinceName='').values_list('update','currentConfirmedCount'))
     count = NovelCoronavirusPneumonia.objects.filter(countryName='中国').filter(provinceName='').count()
     # logger.info('type(count)=%r,count=%r',type(count),count)
     # logger.info('len(b)=%r:b=%r',len(b),b)
@@ -56,14 +58,16 @@ def overview(request):
         name = c[1]
         temp[name] = list(NovelCoronavirusPneumonia.objects.filter(provinceName='')\
                     .filter(countryName=name).order_by('update').values_list('update','currentConfirmedCount'))
+        # logger.info('%r length %r value:%r',name,len(temp[name]),temp[name])
         list2 = [0 for n in range(count-len(temp[name])) if count > len(temp[name])]
         # logger.info('len=%r-%r:%r',count,len(temp[name]),list2)
         temp[name] = [ x[1] for x in temp[name] ]
         temp[name] = list2+temp[name]
-        temp[name].insert(0,name)
+        temp[name].insert(0,name)        
         x.append(temp[name])
     dimensions = [x[0].isoformat() for x in b]
-    dimensions.insert(0,'国家')        
+    dimensions.insert(0,'国家')
+    logger.info('dimensions length %r',len(dimensions))        
     context['dimensions'] = dimensions
     x.insert(0,dimensions)
     context['data'] = x
