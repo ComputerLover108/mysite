@@ -43,6 +43,8 @@
 {% block JS %}
 <!-- 为ECharts准备一个具备大小（宽高）的Dom -->
 <script type="text/javascript">
+    // var dataset={{data|safe}};
+    // console.log(dataset)
 setTimeout(function () {
     var myChart = echarts.init(document.getElementById('main'));
     var option = {

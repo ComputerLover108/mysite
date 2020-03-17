@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 import json
 from datetime import date
+from django.db import connection
 from NCP.models import NovelCoronavirusPneumonia
 import logging
 # logger = logging.getLogger(__name__)
@@ -15,8 +16,15 @@ def overview(request):
     # for x in data:
     #     print(x)
     today = date.today()
+    SQL = 'select max(update) from "NCP";'
+    # lastDay = NovelCoronavirusPneumonia.objects.raw(SQL)
+    with connection.cursor() as cursor:
+        cursor.execute(SQL)
+        lastDay = cursor.fetchone()[0]
+    # print('lastDay=%r:type=%r',lastDay,type(lastDay))
+    logger.info('lastDay=%r:type=%r',lastDay,type(lastDay))
     topCountry = NovelCoronavirusPneumonia.objects.filter(provinceName='')\
-    .filter(update=today)\
+    .filter(update=lastDay)\
     .values_list('update','countryName','currentConfirmedCount','confirmedCount','curedCount','deadCount')\
     .order_by('-currentConfirmedCount')[:20]
     countries = []
@@ -67,7 +75,7 @@ def overview(request):
         x.append(temp[name])
     dimensions = [x[0].isoformat() for x in b]
     dimensions.insert(0,'国家')
-    logger.info('dimensions length %r',len(dimensions))        
+    # logger.info('dimensions length %r',len(dimensions))        
     context['dimensions'] = dimensions
     x.insert(0,dimensions)
     context['data'] = x
@@ -75,12 +83,20 @@ def overview(request):
     return render(request,'NCP/overview.html',context)
 
 def overall(request):
-    data = NovelCoronavirusPneumonia.objects.values('update',"continentName","countryName","provinceName","cityName","currentConfirmedCount","confirmedCount","suspectedCount","curedCount","deadCount","comment", ).filter(provinceName='')
+    data = NovelCoronavirusPneumonia.objects\
+    .values('update',"continentName","countryName","provinceName","cityName","currentConfirmedCount","confirmedCount","suspectedCount","curedCount","deadCount","comment", )\
+    .filter(provinceName='')
     # data = NovelCoronavirusPneumonia.objects.filter(provinceName='')
+    result=[]
     for x in data:
-        print(type(x))
-        result=json.dumps(x)
-        # print(type(result))
-    # result=json.dumps(result)
-    # return JsonResponse(result)
-    return HttpResponse(content={'ok':0})
+        x['update'] = x['update'].isoformat()
+        # logger.info('update type=%r value=%r',type(x['update']),x['update'])
+        # logger.info('row=%r',x)
+        result.append(x)
+        # logger.info('result=%r\n',result)
+    # data=json.dumps(result,ensure_ascii=False)
+    # return HttpResponse(data,content_type="application/json")
+    data = {
+        'result' : result
+    }
+    return JsonResponse(data,safe=False,json_dumps_params={'ensure_ascii':False})
