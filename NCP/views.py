@@ -1,5 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
+from django.core import serializers
+from django.db.models import Q,Sum
 import json
 from datetime import date
 from django.db import connection
@@ -97,6 +99,52 @@ def overall(request):
     # data=json.dumps(result,ensure_ascii=False)
     # return HttpResponse(data,content_type="application/json")
     data = {
-        'result' : result
+        'NCP' : result
     }
     return JsonResponse(data,safe=False,json_dumps_params={'ensure_ascii':False})
+
+def foreign(request):
+    # SQL='''
+    #     -- SELECT "update",sum("currentConfirmedCount") FROM "NCP" WHERE "countryName" !='中国' GROUP BY "update" ORDER BY "update" ;
+    #     SELECT "update",
+    #            sum("currentConfirmedCount") as "确诊",
+    #            SUM("confirmedCount") as "累计确诊", 
+    #            SUM("deadCount") as "死亡", 
+    #            SUM("curedCount") as "治愈"
+    #     FROM "NCP"
+    #     WHERE "countryName" !='中国'
+    #     GROUP BY "update" 
+    #     ORDER BY "update" ;        
+    #     '''
+    # with connection.cursor() as cursor:
+    #     cursor.execute(SQL)
+    #     data = cursor.fetchall()
+   
+    data = NovelCoronavirusPneumonia.objects\
+        .filter(~Q(countryName='中国'))\
+        .values('update')\
+        .annotate(currentConfirmedCount=Sum("currentConfirmedCount"))\
+        .order_by('update')
+    data=list(data)
+    # logger.info('type(data)=%r\n data=%r',type(data),data)        
+    # data = {
+    #     'NCP_foreign' : data
+    # }
+    return JsonResponse(data,safe=False,json_dumps_params={'ensure_ascii':False})
+
+def currentConfirmedCount(request,**args):
+    SQL = '''
+
+    '''
+
+def confirmedCount():
+    pass
+
+def suspectedCount():
+    pass    
+
+def deadCount():
+    pass
+
+def curedCount():
+    pass

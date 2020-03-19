@@ -7,6 +7,7 @@
     <div class="row">
         <div class="col">
             <h1>新冠肺炎疫情</h1>
+            
         </div>
     </div>
     <div class="row">
@@ -27,7 +28,15 @@
                     {% for x in topCountry %}
                     <tr scope="row">
                         {% for a in x %}
-                        <td scope="col">{{a}}</td>
+                        {% if a == "中国" %}
+                            <td scope="col">
+                                <p class="text-danger">{{a}}</p>
+                            </td>
+                        {% else %}
+                            <td scope="col">                           
+                                {{a}}
+                            </td>
+                        {% endif %}
                         {% endfor %}
                     </tr>
                     {% endfor %}
@@ -43,9 +52,26 @@
 {% block JS %}
 <!-- 为ECharts准备一个具备大小（宽高）的Dom -->
 <script type="text/javascript">
-    // var dataset={{data|safe}};
+    var dataset={{data|safe}};
     // console.log(dataset)
-setTimeout(function () {
+    // $.ajax(
+    //     {
+    //         url:"{% url 'overall' %}",
+    //         type:"POST",
+    //         dataType:"json",
+    //         // data:{{NCP}},
+    //         async:true,
+    //         success:function (data) {
+    //             console.log(data)
+    //             // alert(NCP)
+    //             // alert("请求成功")
+    //         },
+    //         error:function () {
+    //             alert("服务器请求超时,请重试!")
+    //         }    
+    //     }
+    // )
+    setTimeout(function () {
     var myChart = echarts.init(document.getElementById('main'));
     var option = {
         title: {
@@ -64,16 +90,7 @@ setTimeout(function () {
             showContent: true
         },
         dataset: {
-            source: [
-                {% for row in data %}
-                    {% if forloop.last %}
-                        {{row|safe}}
-                    {% else %}
-                        {{row|safe}},
-                    {% endif %}
-                {% endfor %}
-                // {{data|safe}}
-            ]
+            source: dataset
         },
         xAxis: {
             type: 'category',
