@@ -28,3 +28,47 @@ FROM "NCP"
 WHERE "provinceName" = ''
 GROUP BY "update"
 ORDER BY "update" ;
+
+CREATE DATABASE "COVID-19" OWNER "OPERATOR";
+CREATE TABLE IF NOT EXISTS "global"(
+    "id" serial,
+    "update" DATE NOT NULL,
+    "continent" VARCHAR,
+    "country" VARCHAR,
+    "confirmation" INTEGER,
+    "totalConfirmation" INTEGER,
+    "suspect" INTEGER,
+    "cure" INTEGER,
+    "dead" INTEGER,
+    "remark" VARCHAR    
+);
+
+CREATE TABLE IF NOT EXISTS "country" (
+    "id" serial,
+    "update" DATE NOT NULL,
+    "country" VARCHAR,
+    "province" VARCHAR,
+    "confirmation" INTEGER,
+    "totalConfirmation" INTEGER,
+    "suspect" INTEGER,
+    "cure" INTEGER,
+    "dead" INTEGER,
+    "remark" VARCHAR    
+);
+
+CREATE TABLE IF NOT EXISTS "province" (
+    "id" serial,
+    "update" DATE NOT NULL,
+    "country" VARCHAR,
+    "province" VARCHAR,
+    "city" VARCHAR,
+    "confirmation" INTEGER,
+    "totalConfirmation" INTEGER,
+    "suspect" INTEGER,
+    "cure" INTEGER,
+    "dead" INTEGER,
+    "remark" VARCHAR  
+);
+ALTER TABLE IF EXISTS "global" ADD CONSTRAINT global_unique UNIQUE ("update","continent","country");
+ALTER TABLE IF EXISTS "country" ADD CONSTRAINT country_unique UNIQUE ("update","country","province");
+ALTER TABLE IF EXISTS "province" ADD CONSTRAINT province_unique UNIQUE ("update","country","province","city");
