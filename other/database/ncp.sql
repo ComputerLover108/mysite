@@ -29,7 +29,7 @@ WHERE "provinceName" = ''
 GROUP BY "update"
 ORDER BY "update" ;
 
-CREATE DATABASE "COVID-19" OWNER "OPERATOR";
+CREATE DATABASE "COVID-19" OWNER "operator";
 CREATE TABLE IF NOT EXISTS "global"(
     "id" serial,
     "update" DATE NOT NULL,
@@ -72,3 +72,8 @@ CREATE TABLE IF NOT EXISTS "province" (
 ALTER TABLE IF EXISTS "global" ADD CONSTRAINT global_unique UNIQUE ("update","continent","country");
 ALTER TABLE IF EXISTS "country" ADD CONSTRAINT country_unique UNIQUE ("update","country","province");
 ALTER TABLE IF EXISTS "province" ADD CONSTRAINT province_unique UNIQUE ("update","country","province","city");
+
+CREATE TABLE IF NOT EXISTS "nameMap" (
+    "name" VARCHAR NOT NULL,
+    "EnglishName" VARCHAR NOT NULL
+);

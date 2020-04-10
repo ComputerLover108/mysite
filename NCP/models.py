@@ -1,21 +1,63 @@
 from django.db import models
 
 # Create your models here.
-class NovelCoronavirusPneumonia(models.Model):
-    # id = models.AutoField()
-    update = models.DateField()
-    continentName = models.CharField(db_column='continentName', max_length=64, blank=True, null=True)  
-    countryName = models.CharField(db_column='countryName', max_length=64, blank=True, null=True)  
-    provinceName = models.CharField(db_column='provinceName', max_length=64, blank=True, null=True)  
-    cityName = models.CharField(db_column='cityName', max_length=64, blank=True, null=True)  
-    currentConfirmedCount = models.IntegerField(db_column='currentConfirmedCount', blank=True, null=True)  
-    confirmedCount = models.IntegerField(db_column='confirmedCount', blank=True, null=True)  
-    suspectedCount = models.IntegerField(db_column='suspectedCount', blank=True, null=True)  
-    curedCount = models.IntegerField(db_column='curedCount', blank=True, null=True)  
-    deadCount = models.IntegerField(db_column='deadCount', blank=True, null=True)  
-    comment = models.CharField(max_length=64, blank=True, null=True)
+class Namemap(models.Model):
+    name = models.CharField(max_length=255)
+    englishname = models.CharField(db_column='EnglishName', max_length=255)  # Field name made lowercase.
 
     class Meta:
         managed = False
-        db_table = 'NCP'
-        unique_together = (('update', 'continentName', 'countryName', 'provinceName', 'cityName'),)
+        db_table = 'nameMap'
+        unique_together = (('name', 'englishname'),)
+
+class Global(models.Model):
+    id = models.AutoField(db_column='id',primary_key=True)
+    update = models.DateField()
+    continent = models.CharField(max_length=255, blank=True, null=True)
+    country = models.CharField(max_length=255, blank=True, null=True)
+    confirmation = models.IntegerField(blank=True, null=True)
+    totalconfirmation = models.IntegerField(db_column='totalConfirmation', blank=True, null=True)  # Field name made lowercase.
+    suspect = models.IntegerField(blank=True, null=True)
+    cure = models.IntegerField(blank=True, null=True)
+    dead = models.IntegerField(blank=True, null=True)
+    remark = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'global'
+        unique_together = (('update', 'continent', 'country'),)
+
+class Country(models.Model):
+    id = models.AutoField(db_column='id',primary_key=True)
+    update = models.DateField()
+    country = models.CharField(max_length=255, blank=True, null=True)
+    province = models.CharField(max_length=255, blank=True, null=True)
+    confirmation = models.IntegerField(blank=True, null=True)
+    totalconfirmation = models.IntegerField(db_column='totalConfirmation', blank=True, null=True)  # Field name made lowercase.
+    suspect = models.IntegerField(blank=True, null=True)
+    cure = models.IntegerField(blank=True, null=True)
+    dead = models.IntegerField(blank=True, null=True)
+    remark = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'country'
+        unique_together = (('update', 'country', 'province'),)
+
+class Province(models.Model):
+    id = models.AutoField(db_column='id',primary_key=True)
+    update = models.DateField()
+    country = models.CharField(max_length=255, blank=True, null=True)
+    province = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=255, blank=True, null=True)
+    confirmation = models.IntegerField(blank=True, null=True)
+    totalconfirmation = models.IntegerField(db_column='totalConfirmation', blank=True, null=True)  # Field name made lowercase.
+    suspect = models.IntegerField(blank=True, null=True)
+    cure = models.IntegerField(blank=True, null=True)
+    dead = models.IntegerField(blank=True, null=True)
+    remark = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'province'
+        unique_together = (('update', 'country', 'province', 'city'),)        

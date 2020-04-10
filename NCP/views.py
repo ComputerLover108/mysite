@@ -5,7 +5,7 @@ from django.db.models import Q,Sum
 import json
 from datetime import date
 from django.db import connection
-from NCP.models import NovelCoronavirusPneumonia
+from NCP.models import Global
 import logging
 # logger = logging.getLogger(__name__)
 logger = logging.getLogger('django')
@@ -13,64 +13,39 @@ logger = logging.getLogger('django')
 # Create your views here.
 def overview(request):
     context = {'title':'新冠肺炎疫情'} 
-    # # print(type(data))
-    # context['data'] = data
-    # for x in data:
-    #     print(x)
     today = date.today()
-    SQL = 'select max(update) from "NCP";'
-    # lastDay = NovelCoronavirusPneumonia.objects.raw(SQL)
+    SQL = 'select max(update) from "global";'
     with connection.cursor() as cursor:
         cursor.execute(SQL)
         lastDay = cursor.fetchone()[0]
     # print('lastDay=%r:type=%r',lastDay,type(lastDay))
-    logger.info('lastDay=%r:type=%r',lastDay,type(lastDay))
-    topCountry = NovelCoronavirusPneumonia.objects.filter(provinceName='')\
+    # logger.info('lastDay=%r:type=%r',lastDay,type(lastDay))
+    topCountry = Global.objects\
     .filter(update=lastDay)\
-    .values_list('update','countryName','currentConfirmedCount','confirmedCount','curedCount','deadCount')\
-    .order_by('-currentConfirmedCount')[:20]
+    .values_list('update','country','confirmation','totalconfirmation','cure','dead')\
+    .order_by('-confirmation')[:20]
     countries = []
     for x in topCountry:
         countries.append(x[1])
     # logger.info('%r',countries)
-    data = NovelCoronavirusPneumonia.objects.filter(provinceName='')\
-        .filter(countryName__in=countries) \
-        .values('update','countryName','currentConfirmedCount')   
-    # countries = NovelCoronavirusPneumonia.objects.distinct('countryName').values_list('countryName')
-    # updates = NovelCoronavirusPneumonia.objects.distinct('update').values_list('update')
+    data = Global.objects\
+        .filter(country__in=countries) \
+        .values('update','country','confirmation')   
     context['topCountry'] = topCountry
-    # context['updates'] = updates
-    # context['countries'] = countries
-    # columnName = list(data[0].keys())
-    # context['columnName'] = columnName
     x = []
     temp = {}
-    # for row in data:
-    #     temp['update'] = row['update'].isoformat()
-    #     temp['countryName'] = row['countryName']
-    #     temp['currentConfirmedCount'] = row['currentConfirmedCount']
-    #     # logger.info('temp=%r',temp)
-    #     x.append(temp)
-    #     temp={}
-    # context['data'] = x
-    # logger.info('data=%r',x)
-    countries = NovelCoronavirusPneumonia.objects.distinct('countryName').values_list('countryName')
+    countries = Global.objects.distinct('country').values_list('country')
     dimensions = []
     a = []
-    b = list(NovelCoronavirusPneumonia.objects\
+    b = list(Global.objects\
         .distinct('update')\
-        .filter(countryName='中国').filter(provinceName='').values_list('update','currentConfirmedCount'))
-    count = NovelCoronavirusPneumonia.objects.filter(countryName='中国').filter(provinceName='').count()
-    # logger.info('type(count)=%r,count=%r',type(count),count)
-    # logger.info('len(b)=%r:b=%r',len(b),b)
-    # logger.info('dimensions=%r',dimensions)
+        .filter(country='中国').values_list('update','confirmation'))
+    count = Global.objects.filter(country='中国').count()
     for c in topCountry:
         name = c[1]
-        temp[name] = list(NovelCoronavirusPneumonia.objects.filter(provinceName='')\
-                    .filter(countryName=name).order_by('update').values_list('update','currentConfirmedCount'))
-        # logger.info('%r length %r value:%r',name,len(temp[name]),temp[name])
+        temp[name] = list(Global.objects.filter(provinceName='')\
+                    .filter(country=name).order_by('update').values_list('update','confirmation'))
         list2 = [0 for n in range(count-len(temp[name])) if count > len(temp[name])]
-        # logger.info('len=%r-%r:%r',count,len(temp[name]),list2)
         temp[name] = [ x[1] for x in temp[name] ]
         temp[name] = list2+temp[name]
         temp[name].insert(0,name)        
@@ -85,10 +60,10 @@ def overview(request):
     return render(request,'NCP/overview.html',context)
 
 def overall(request):
-    data = NovelCoronavirusPneumonia.objects\
-    .values('update',"continentName","countryName","provinceName","cityName","currentConfirmedCount","confirmedCount","suspectedCount","curedCount","deadCount","comment", )\
+    data = Global.objects\
+    .values('update',"continent","country","confirmation","totalconfirmation","suspect","cure","dead","remark", )\
     .filter(provinceName='')
-    # data = NovelCoronavirusPneumonia.objects.filter(provinceName='')
+    # data = Global.objects.filter(provinceName='')
     result=[]
     for x in data:
         x['update'] = x['update'].isoformat()
@@ -105,14 +80,14 @@ def overall(request):
 
 def foreign(request):
     # SQL='''
-    #     -- SELECT "update",sum("currentConfirmedCount") FROM "NCP" WHERE "countryName" !='中国' GROUP BY "update" ORDER BY "update" ;
+    #     -- SELECT "update",sum("confirmation") FROM "NCP" WHERE "country" !='中国' GROUP BY "update" ORDER BY "update" ;
     #     SELECT "update",
-    #            sum("currentConfirmedCount") as "确诊",
-    #            SUM("confirmedCount") as "累计确诊", 
-    #            SUM("deadCount") as "死亡", 
-    #            SUM("curedCount") as "治愈"
+    #            sum("confirmation") as "确诊",
+    #            SUM("totalconfirmation") as "累计确诊", 
+    #            SUM("dead") as "死亡", 
+    #            SUM("cure") as "治愈"
     #     FROM "NCP"
-    #     WHERE "countryName" !='中国'
+    #     WHERE "country" !='中国'
     #     GROUP BY "update" 
     #     ORDER BY "update" ;        
     #     '''
@@ -120,10 +95,10 @@ def foreign(request):
     #     cursor.execute(SQL)
     #     data = cursor.fetchall()
    
-    data = NovelCoronavirusPneumonia.objects\
-        .filter(~Q(countryName='中国'))\
+    data = Global.objects\
+        .filter(~Q(country='中国'))\
         .values('update')\
-        .annotate(currentConfirmedCount=Sum("currentConfirmedCount"))\
+        .annotate(confirmation=Sum("confirmation"))\
         .order_by('update')
     data=list(data)
     # logger.info('type(data)=%r\n data=%r',type(data),data)        
@@ -132,19 +107,19 @@ def foreign(request):
     # }
     return JsonResponse(data,safe=False,json_dumps_params={'ensure_ascii':False})
 
-def currentConfirmedCount(request,**args):
+def confirmation(request,**args):
     SQL = '''
 
     '''
 
-def confirmedCount():
+def totalconfirmation():
     pass
 
-def suspectedCount():
+def suspect():
     pass    
 
-def deadCount():
+def dead():
     pass
 
-def curedCount():
+def cure():
     pass

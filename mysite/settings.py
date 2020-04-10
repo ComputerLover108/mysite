@@ -93,7 +93,7 @@ DATABASES = {
     # }
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'HLD',
+        'NAME': 'COVID-19',
         'USER': 'operator',
         'PASSWORD': '5302469',
         # 'HOST': '192.168.0.122',
