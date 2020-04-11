@@ -23,7 +23,7 @@ def overview(request):
     topCountry = Global.objects\
     .filter(update=lastDay)\
     .values_list('update','country','confirmation','totalconfirmation','cure','dead')\
-    .order_by('-confirmation')[:20]
+    .order_by('-totalconfirmation')[:20]
     countries = []
     for x in topCountry:
         countries.append(x[1])
@@ -43,7 +43,7 @@ def overview(request):
     count = Global.objects.filter(country='中国').count()
     for c in topCountry:
         name = c[1]
-        temp[name] = list(Global.objects.filter(provinceName='')\
+        temp[name] = list(Global.objects\
                     .filter(country=name).order_by('update').values_list('update','confirmation'))
         list2 = [0 for n in range(count-len(temp[name])) if count > len(temp[name])]
         temp[name] = [ x[1] for x in temp[name] ]
