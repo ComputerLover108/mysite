@@ -7,7 +7,7 @@
     <div class="row">
         <div class="col">
             <h1>新冠肺炎疫情</h1>
-            
+            <h2>{{lastday}}</h2>
         </div>
     </div>
     <div class="row">
@@ -16,7 +16,8 @@
             <table class="table">
                 <thead>
                     <tr scope="row">
-                        <th scope="col">日期</th>
+                        <th scope="col">序号</th>
+                        {% comment %} <th scope="col">日期</th> {% endcomment %}
                         <th scope="col">国家</th>
                         <th scope="col">确诊</th>
                         <th scope="col">累计确诊</th>
@@ -27,6 +28,7 @@
                 <tbody>
                     {% for x in topCountry %}
                     <tr scope="row">
+                        <td scope="col">{{forloop.counter}}</td>
                         {% for a in x %}
                         {% if a == "中国" %}
                             <td scope="col">

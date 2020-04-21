@@ -22,16 +22,32 @@ def overview(request):
     # logger.info('lastDay=%r:type=%r',lastDay,type(lastDay))
     topCountry = Global.objects\
     .filter(update=lastDay)\
-    .values_list('update','country','confirmation','totalconfirmation','cure','dead')\
+    .values_list('country','confirmation','totalconfirmation','cure','dead')\
     .order_by('-totalconfirmation')[:20]
     countries = []
     for x in topCountry:
-        countries.append(x[1])
+        countries.append(x[0])
     # logger.info('%r',countries)
+    col=["update",'sum("confirmation")']
+    table = 'global'
+    arg ="'"+"','".join(countries)+"'"
+    # logger.info('arg=%r',arg)
+    SQL = f'''
+        select "update",sum("confirmation") from "{table}"
+        where country not in ({arg}) 
+        group by "{col[0]}"
+        order by "{col[0]}";
+    '''
+    # logger.info('SQL=\n%r',SQL)
+    with connection.cursor() as cursor:
+        cursor.execute(SQL)
+        others = cursor.fetchall()
+        # logger.info('others=%r',others)        
     data = Global.objects\
         .filter(country__in=countries) \
         .values('update','country','confirmation')   
     context['topCountry'] = topCountry
+    context['lastday'] = lastDay
     x = []
     temp = {}
     countries = Global.objects.distinct('country').values_list('country')
@@ -40,9 +56,10 @@ def overview(request):
     b = list(Global.objects\
         .distinct('update')\
         .filter(country='中国').values_list('update','confirmation'))
+    
     count = Global.objects.filter(country='中国').count()
     for c in topCountry:
-        name = c[1]
+        name = c[0]
         temp[name] = list(Global.objects\
                     .filter(country=name).order_by('update').values_list('update','confirmation'))
         list2 = [0 for n in range(count-len(temp[name])) if count > len(temp[name])]
@@ -52,9 +69,18 @@ def overview(request):
         x.append(temp[name])
     dimensions = [x[0].isoformat() for x in b]
     dimensions.insert(0,'国家')
-    # logger.info('dimensions length %r',len(dimensions))        
+    # logger.info('dimensions length %r',len(dimensions))
+    # logger.info('dimensions=%r',dimensions)
+    # logger.info('others=%r',others)       
     context['dimensions'] = dimensions
     x.insert(0,dimensions)
+    count1=len(x[0])
+    count2=len(others)
+    # logger.info('count1=%r,count2=%r',count1,count2)
+    dimensions =[0]*(count1-count2) + [x[1] for x in others]
+    dimensions.insert(0,'其他')
+    # logger.info('dimensions=%r',dimensions)
+    x.append(dimensions)
     context['data'] = x
     # logger.info('%r',x)
     return render(request,'NCP/overview.html',context)

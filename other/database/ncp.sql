@@ -77,3 +77,4 @@ CREATE TABLE IF NOT EXISTS "nameMap" (
     "name" VARCHAR NOT NULL,
     "EnglishName" VARCHAR NOT NULL
 );
+ALTER TABLE IF EXISTS "nameMap" ADD CONSTRAINT "nameMap_unique" UNIQUE ("name","EnglishName");
