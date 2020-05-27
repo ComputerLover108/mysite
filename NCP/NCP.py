@@ -11,6 +11,7 @@ import argparse
 import random
 import re
 from bs4 import BeautifulSoup
+from requests.exceptions import ReadTimeout,HTTPError,RequestException
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level = logging.INFO)
@@ -281,12 +282,9 @@ def save(record):
     psql.conn.commit()    
 
 def crawl_NCP(url,params,timeout):
-    response = requests.get(url,headers=headers,params=params,timeout=timeout)
-    # json_reads = json.loads(response.text)
-    # logger.info('response.status_code=%r',response.status_code)
-    if response.status_code==200:
+    try:
+        response = requests.get(url,headers=headers,params=params,timeout=timeout)
         json_reads = response.json()
-        # logger.info('json_reads=%r',json_reads)
         records=json_reads["results"]
         if url == "https://lab.isaaclin.cn/nCoV/api/area" :
             logger.info('crawl NCP data,params=%r',params)
@@ -299,10 +297,10 @@ def crawl_NCP(url,params,timeout):
             DBSave(records,**extra)
         with open(filename,'w') as f:
             json.dump(records,f,ensure_ascii=False)
-    if response.status_code>=500:
-        msg = '服务端拒绝服务：{}'.format(response.status_code)
+    except RequestException:
+        msg = '{} 数据爬取失败：{}'.format(url,response.status_code)
         logger.error(msg)
-    # logger.info(type(records))
+        return
 
 def crawl_NCP_dingxiang(url,timeout):
     response = requests.get(url,headers=headers,timeout=timeout)
@@ -350,41 +348,48 @@ def crawl_NCP_qq():
     params['_'] = int(time.time()*1000)
     # url = 'https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5&callback=jQuery341001657575837432268_1581070969707&_=1581070969708'
     # url='https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5'
-    response = requests.get(url,headers=headers,params=params,timeout=timeout)
-    if response.status_code==200:
+    try:
+        response = requests.get(url,headers=headers,params=params,timeout=timeout)
         content = response.text
         a = params['callback']+'('
         b = content.split(a)[1].split(')')[0]
         c = json.loads(b)
         china_json = json.loads(c['data'])
         # logger.info('china_json=%r',china_json.keys())    
-
+    except RequestException:
+        msg = '{} 数据爬取失败：{}'.format(url,response.status_code)
+        logger.error(msg)
     # 国外
     url = 'https://view.inews.qq.com/g2/getOnsInfo'
     params['name'] = 'disease_foreign'
     params['callback'] = 'jQuery34108116985782396278_1584837309333'
     params['_'] =  int(time.time()*1000)
-    response = requests.get(url,headers=headers,params=params,timeout=timeout)
+    try:
+        response = requests.get(url,headers=headers,params=params,timeout=timeout)
     # logger.info('url=%r\nheaders=%r\n,params=%r\n,timeout=%r\n',url,headers,params,timeout)
-    if response.status_code==200:
         content = response.text
         a = params['callback']+'('
         b = content.split(a)[1].split(')')[0]
         c = json.loads(b)
         foreign_json = json.loads(c['data'])
         # logger.info('foreign_json=%r',foreign_json.keys())
+    except RequestException:
+        msg = '{} 数据爬取失败：{}'.format(url,response.status_code)
+        logger.error(msg)
 
     url='https://view.inews.qq.com/g2/getOnsInfo'
     del params['callback']
     del params['_']
     params['name']='disease_other'
-    response = requests.get(url,headers=headers,params=params,timeout=timeout)
+    try:
+        response = requests.get(url,headers=headers,params=params,timeout=timeout)
     # logger.info('url=%r\nheaders=%r\n,params=%r\n,timeout=%r\n',url,headers,params,timeout)    
-    if response.status_code==200:
         content = response.json()['data']
         other_json=json.loads(content)
         # logger.info(other_json)
-
+    except RequestException:
+        msg = '{} 数据爬取失败：{}'.format(url,response.status_code)
+        logger.error(msg)
     rows=[]
     row=[]
     totoalProvinceRecords=[]
@@ -490,8 +495,26 @@ def crawl_NCP_qq():
                             totalCityRecords.append(cityRecord)                                                             
                             # logger.info('confirmation=%r',cityRecord['confirmation'])
                             # logger.info('xx[total][nowConfirm]=%r',xx['total']['nowConfirm'])
-                        
-
+        records = data['globalDailyHistory']                
+        for record in records:
+            if record['date'].count('.')==1:
+                year = '2020'
+                month,day = record['date'].split('.')
+            elif record['date'].count('.')==2:
+                year,month,day=record['date'].split('.')
+            else:
+                msg='{}不是有效的日期格式！'.format(record['date'])
+                logger.error(msg)
+                continue
+            update = datetime.date(int(year),int(month),int(day))
+            confirmation=record['all']['confirm']
+            cure = record['all']['heal']
+            dead = record['all']['dead']
+            deadRate=record['all']['deadRate']            
+            cureRate=record['all']['healRate']
+            # row=[update,confirmation,cure,dead,cureRate,deadRate]
+            logger.info('%r,%r,%r,%r,%r,%r\n',update,confirmation,cure,dead,cureRate,deadRate)
+            # rows.append(row)
     name = 'global'
     columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
     coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
@@ -701,11 +724,11 @@ if __name__ == '__main__':
     psql = MyPostgreSQL(dbname=dbname,user=user,password=password,host=host,port=port)    
     if args.all:
         filename = 'DXYArea-TimeSeries.json'
-        with open(filename,'r',encoding='utf-8') as f:
+        with open(filename,'r',encoding='utf-8',errors='ignore') as f:
             records=json.load(f)
             DBSave(records)
         filename = 'DXYOverall-TimeSeries.json'                   
-        with open(filename,'r',encoding='utf-8') as f:
+        with open(filename,'r',encoding='utf-8',errors='ignore') as f:
             records=json.load(f)
             extra = {'continentName':'亚洲','countryName':'中国'}
             DBSave(records,**extra)        
