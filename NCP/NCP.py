@@ -264,13 +264,13 @@ def save(record):
     columns = record['columns'] 
     coreColumns = record['coreColumns']
     rows = record['rows']
-    SQL_snippet =f'ON CONFLICT ON CONSTRAINT {table}_unique DO UPDATE SET '
+    SQL_snippet =f'ON CONFLICT ON CONSTRAINT "{table}_unique" DO UPDATE SET '
     for col in coreColumns:
        SQL_snippet += f' "{col}" = EXCLUDED."{col}",'
     SQL = f"""insert into "{table}" ("{'","'.join(columns)}") values ({','.join(['%s'] * len(columns))}) """
     SQL_snippet = SQL_snippet.rstrip(',')+';'
     SQL += SQL_snippet
-    # logger.info('sql in save,sql:\n%r',SQL)    
+    logger.info('sql in save,sql:\n%r',SQL)    
     dbname = 'COVID-19'
     user='operator'
     password='5302469'
@@ -297,8 +297,8 @@ def crawl_NCP(url,params,timeout):
             DBSave(records,**extra)
         with open(filename,'w') as f:
             json.dump(records,f,ensure_ascii=False)
-    except RequestException:
-        msg = '{} 数据爬取失败：{}'.format(url,response.status_code)
+    except Exception:
+        msg = '{} 数据爬取失败：{}'.format(url)
         logger.error(msg)
         return
 
@@ -356,8 +356,8 @@ def crawl_NCP_qq():
         c = json.loads(b)
         china_json = json.loads(c['data'])
         # logger.info('china_json=%r',china_json.keys())    
-    except RequestException:
-        msg = '{} 数据爬取失败：{}'.format(url,response.status_code)
+    except Exception:
+        msg = '{} 数据爬取失败：{}'.format(url)
         logger.error(msg)
     # 国外
     url = 'https://view.inews.qq.com/g2/getOnsInfo'
@@ -366,15 +366,15 @@ def crawl_NCP_qq():
     params['_'] =  int(time.time()*1000)
     try:
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
-    # logger.info('url=%r\nheaders=%r\n,params=%r\n,timeout=%r\n',url,headers,params,timeout)
+        # logger.info('url=%r\nheaders=%r\n,params=%r\n,timeout=%r\n',url,headers,params,timeout)
         content = response.text
         a = params['callback']+'('
         b = content.split(a)[1].split(')')[0]
         c = json.loads(b)
         foreign_json = json.loads(c['data'])
         # logger.info('foreign_json=%r',foreign_json.keys())
-    except RequestException:
-        msg = '{} 数据爬取失败：{}'.format(url,response.status_code)
+    except Exception:
+        msg = '{} 数据爬取失败：{}'.format(url)
         logger.error(msg)
 
     url='https://view.inews.qq.com/g2/getOnsInfo'
@@ -383,15 +383,16 @@ def crawl_NCP_qq():
     params['name']='disease_other'
     try:
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
-    # logger.info('url=%r\nheaders=%r\n,params=%r\n,timeout=%r\n',url,headers,params,timeout)    
+        # logger.info('url=%r\nheaders=%r\n,params=%r\n,timeout=%r\n',url,headers,params,timeout)    
         content = response.json()['data']
         other_json=json.loads(content)
         # logger.info(other_json)
-    except RequestException:
-        msg = '{} 数据爬取失败：{}'.format(url,response.status_code)
+    except Exception:
+        msg = '{} 数据爬取失败：{}'.format(url)
         logger.error(msg)
     rows=[]
     row=[]
+    globalSummaryRecords=[]
     totoalProvinceRecords=[]
     totalCityRecords=[]
     data=china_json.copy()
@@ -506,12 +507,20 @@ def crawl_NCP_qq():
                 msg='{}不是有效的日期格式！'.format(record['date'])
                 logger.error(msg)
                 continue
+            globalSummaryRecord={}
             update = datetime.date(int(year),int(month),int(day))
-            confirmation=record['all']['confirm']
+            confirm=record['all']['confirm']
             cure = record['all']['heal']
             dead = record['all']['dead']
             deadRate=record['all']['deadRate']            
             cureRate=record['all']['healRate']
+            globalSummaryRecord['update'] = update
+            globalSummaryRecord['confirm']=confirm
+            globalSummaryRecord['cure'] =cure
+            globalSummaryRecord['dead'] = dead
+            globalSummaryRecord['deadRate'] = deadRate
+            globalSummaryRecord['cureRate'] = cureRate
+            globalSummaryRecords.append(globalSummaryRecord)
             # row=[update,confirmation,cure,dead,cureRate,deadRate]
             logger.info('%r,%r,%r,%r,%r,%r\n',update,confirmation,cure,dead,cureRate,deadRate)
             # rows.append(row)
@@ -526,6 +535,27 @@ def crawl_NCP_qq():
     }
     save(data)      
 
+    rows=[]    
+    for record in globalSummaryRecords:
+        row=[]
+        record['confirm'] = record['confirm'] if 'confirm' in record else 0
+        row.append(record['update'])
+        row.append(record['confirm'])
+        row.append(record['cure'])
+        row.append(record['dead'])
+        row.append(record['cureRate'])
+        row.append(record['deadRate'])
+        rows.append(row)
+    name = 'globalSummary'
+    columns = ["update","confirm","cure","dead","cureRate","deadRate"]
+    coreColumns = ["confirm","cure","dead","cureRate","deadRate"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data) 
 
     rows=[]    
     for record in totoalProvinceRecords:
