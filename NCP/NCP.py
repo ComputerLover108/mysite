@@ -298,9 +298,11 @@ def crawl_NCP():
         extra = {'continentName':'亚洲','countryName':'中国'}
         DBSave(records,**extra)
 
+        # 爬取谣言
         url = "https://lab.isaaclin.cn/nCoV/api/rumors"
+        params = {"page":1,"num":100}
         timeout = 3
-        response = requests.get(url,headers=headers,timeout=timeout)
+        response = requests.get(url,headers=headers,params=params,timeout=timeout)
         json_reads = response.json()
         rumors_records = json_reads["results"]
         # 从指定json文件中提取数据
@@ -340,11 +342,64 @@ def crawl_NCP():
             'coreColumns':coreColumns,
             'rows':rows
         }
-        save(data)        
+        save(data)
         # filename = 'rumors1.json'
         # with open(filename,'w') as f:
         #     json.dump(rumors_records,f,ensure_ascii=False,indent=4,sort_keys=True) 
-        
+
+
+        # 爬取新冠新闻
+        url = "https://lab.isaaclin.cn/nCoV/api/news"
+        params = {"page":1,"num":100}
+        timeout = 3
+        response = requests.get(url,headers=headers,params=params,timeout=timeout)
+        json_reads = response.json()
+        news_records = json_reads["results"]
+        # 从指定json文件中提取数据
+        # filename = "news.json"
+        # with open(filename, 'r') as f:
+        #     data = json.load(f)
+        #     news_records = data         
+        logger.info("news_records count %r",len(news_records))
+        # logger.info("news:\n%r",json_reads)
+        rows = []
+        for record in news_records:
+            row=[]
+            title = record["title"]
+            summary = record["summary"]
+            infoSource = record["infoSource"]
+            sourceUrl = record["sourceUrl"]
+            if "pubDate" in record:
+                dt = record["pubDate"]
+                if isinstance(dt,str):
+                    d = datetime.datetime.fromtimestamp(int(dt)/1000.0,tz=None)
+                    # logger.info("d = %r",d)
+                elif isinstance(dt,int):
+                    d = datetime.datetime.fromtimestamp(dt/1000.0,tz=None)
+                # elif isinstance(dt,int):
+                #     d = datetime.datetime.fromisoformat(int(dt))
+                    # logger.info("d = %r",d)
+                else:
+                    logger.info("record failure %r",record)
+                    continue
+                sd = d.strftime("%Y-%m-%d")                
+            # else:
+            #     sd = datetime.date.today()
+            update = sd
+            row = [update,title,summary,infoSource,sourceUrl]
+            rows.append(row)
+            # logger.info("news:%r,%r,%r,%r",update,title,summary,content)
+        name = 'news'
+        columns = ["update","title","summary","infoSource","sourceUrl"]
+        coreColumns = ["update","title"]
+        data={
+            'table':name,
+            'columns':columns,
+            'coreColumns':coreColumns,
+            'rows':rows
+        }
+        save(data)
+
     except ReadTimeout:
         logger.info('%r timeout',url)
     except HTTPError:
