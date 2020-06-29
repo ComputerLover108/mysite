@@ -177,7 +177,7 @@ def DBSave(records,**extra):
                         curedCount = curedCount if isinstance(curedCount,int) else 0
                         deadCount = deadCount if isinstance(deadCount,int) else 0
                         if d <= datetime.datetime(2020,2,9,0,0):
-                            logger.info('update=%r,currentConfirmedCount=%r,confirmedCount=%r,suspectedCount=%r,curedCount=%r,deadCount=%r',d,currentConfirmedCount,confirmedCount,suspectedCount,curedCount,deadCount)
+                            # logger.info('update=%r,currentConfirmedCount=%r,confirmedCount=%r,suspectedCount=%r,curedCount=%r,deadCount=%r',d,currentConfirmedCount,confirmedCount,suspectedCount,curedCount,deadCount)
                             currentConfirmedCount = confirmedCount if currentConfirmedCount==0 else currentConfirmedCount
 
                         cityRow.append(sd)
@@ -198,7 +198,7 @@ def DBSave(records,**extra):
                         else:
                             country_row = [sd,countryName,provinceName,currentConfirmedCount,confirmedCount,suspectedCount,curedCount,deadCount,comment]
                             country_rows.append(country_row)
-                            logger.info(country_row)
+                            # logger.info(country_row)
                         # logger.info('cityRow={}'.format(cityRow))
                         if cityRow:
                             rows.append(cityRow)
@@ -257,7 +257,7 @@ def DBSave(records,**extra):
     #     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     #     writer.writeheader()
     #     writer.writerows(records)
-    # psql.cursor.copy_from(csvfile, 'ncp',columns=fieldnames,sep=',', size=16384)
+    # psql.cursor.copy_from(csvfile, 'ncp',columns=fieldnames,sep=',', size=16384) 
 
 def save(record):
     table = record['table']
@@ -270,7 +270,7 @@ def save(record):
     SQL = f"""insert into "{table}" ("{'","'.join(columns)}") values ({','.join(['%s'] * len(columns))}) """
     SQL_snippet = SQL_snippet.rstrip(',')+';'
     SQL += SQL_snippet
-    logger.info('sql in save,sql:\n%r',SQL)    
+    # logger.info('sql in save,sql:\n%r',SQL)    
     dbname = 'COVID-19'
     user='operator'
     password='5302469'
@@ -281,26 +281,80 @@ def save(record):
     psql.cursor.executemany(SQL,rows)
     psql.conn.commit()    
 
-def crawl_NCP(url,params,timeout):
+def crawl_NCP():
     try:
-        response = requests.get(url,headers=headers,params=params,timeout=timeout)
+        url = "https://lab.isaaclin.cn/nCoV/api/area"
+        timeout = 9
+        response = requests.get(url,headers=headers,timeout=timeout)
         json_reads = response.json()
         records=json_reads["results"]
-        if url == "https://lab.isaaclin.cn/nCoV/api/area" :
-            logger.info('crawl NCP data,params=%r',params)
-            filename = 'NCP.json'
-            DBSave(records)
-        if url == "https://lab.isaaclin.cn/nCoV/api/overall" :
-            logger.info('crawl china NCP data,params=%r',params)
-            filename = 'NCP_china.json'
-            extra = {'continentName':'亚洲','countryName':'中国'}
-            DBSave(records,**extra)
-        with open(filename,'w') as f:
-            json.dump(records,f,ensure_ascii=False)
+        DBSave(records)
+
+        url = "https://lab.isaaclin.cn/nCoV/api/overall"
+        timeout = 3
+        response = requests.get(url,headers=headers,timeout=timeout)
+        json_reads = response.json()
+        records=json_reads["results"]
+        extra = {'continentName':'亚洲','countryName':'中国'}
+        DBSave(records,**extra)
+
+        url = "https://lab.isaaclin.cn/nCoV/api/rumors"
+        timeout = 3
+        response = requests.get(url,headers=headers,timeout=timeout)
+        json_reads = response.json()
+        rumors_records = json_reads["results"]
+        # 从指定json文件中提取数据
+        # filename = "rumors.json"
+        # with open(filename, 'r') as f:
+        #     data = json.load(f)
+        #     rumors_records = data         
+        logger.info("rumors_records count %r",len(rumors_records))
+        # logger.info("rumors:\n%r",json_reads)
+        rows = []
+        for record in rumors_records:
+            row=[]
+            title = record["title"]
+            summary = record["mainSummary"]
+            content = record["body"]
+            if "crawlTime" in record:
+                dt = record["crawlTime"]
+                # logger.info('type(dt)=%r,dt=%r',type(dt),dt)
+                # logger.info('%r\n',record)
+                if isinstance(dt,int):
+                    d = datetime.datetime.fromtimestamp(dt/1000.0,tz=None)
+                elif isinstance(dt,int):
+                    d = datetime.datetime.fromisoformat(dt)
+                sd = d.strftime("%Y-%m-%d")                
+            else:
+                sd = datetime.date.today()
+            update = sd
+            row = [update,title,summary,content]
+            rows.append(row)
+            # logger.info("rumors:%r,%r,%r,%r",update,title,summary,content)
+        name = 'rumors'
+        columns = ["update","title","summary","content"]
+        coreColumns = ["update","title"]
+        data={
+            'table':name,
+            'columns':columns,
+            'coreColumns':coreColumns,
+            'rows':rows
+        }
+        save(data)        
+        # filename = 'rumors1.json'
+        # with open(filename,'w') as f:
+        #     json.dump(rumors_records,f,ensure_ascii=False,indent=4,sort_keys=True) 
+        
+    except ReadTimeout:
+        logger.info('%r timeout',url)
+    except HTTPError:
+        logger.info('%r httperror',url)
+    except RequestException:
+        logger.info('%r reqerror',url) 
     except Exception:
         msg = '{} 数据爬取失败：{}'.format(url)
         logger.error(msg)
-        return
+    return
 
 def crawl_NCP_dingxiang(url,timeout):
     response = requests.get(url,headers=headers,timeout=timeout)
@@ -522,8 +576,9 @@ def crawl_NCP_qq():
             globalSummaryRecord['cureRate'] = cureRate
             globalSummaryRecords.append(globalSummaryRecord)
             # row=[update,confirmation,cure,dead,cureRate,deadRate]
-            logger.info('%r,%r,%r,%r,%r,%r\n',update,confirmation,cure,dead,cureRate,deadRate)
+            # logger.info('%r,%r,%r,%r,%r,%r\n',update,confirmation,cure,dead,cureRate,deadRate)
             # rows.append(row)
+    
     name = 'global'
     columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
     coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
@@ -616,7 +671,7 @@ def crawl_NCP_qq():
    
     logger.info('totoalProvinceRecords 共有%r条记录。',len(totoalProvinceRecords))
     logger.info('totalCityRecords 共有%r条记录。',len(totalCityRecords))    
-
+    logger.info('globalSummaryRecords 共有%r条记录。',len(globalSummaryRecords))
 
 def DXY_csv_to_database(filename):
     # logger.info("filename is %r",filename)
@@ -743,39 +798,32 @@ if __name__ == '__main__':
     parser.add_argument("-c","--cvs",help='从指定csv文件中提取数据')
     parser.add_argument("-j","--json",help='从指定json文件中提取数据')
     args = parser.parse_args()        
-    params = {'latest': '0'}
-    timeout = 9
-    dbname = 'COVID-19'
-    user='operator'
-    password='5302469'
-    # host='localhost'
-    host='127.0.0.1'
-    port='2012'
-    psql = MyPostgreSQL(dbname=dbname,user=user,password=password,host=host,port=port)    
-    if args.all:
-        filename = 'DXYArea-TimeSeries.json'
-        with open(filename,'r',encoding='utf-8',errors='ignore') as f:
-            records=json.load(f)
-            DBSave(records)
-        filename = 'DXYOverall-TimeSeries.json'                   
-        with open(filename,'r',encoding='utf-8',errors='ignore') as f:
-            records=json.load(f)
-            extra = {'continentName':'亚洲','countryName':'中国'}
-            DBSave(records,**extra)        
-    else:
-        params['latest'] = 1
-    if args.cvs:
-        filename = args.cvs
-        DXY_csv_to_database(filename)
-    if args.json:
-        filename = args.json
-        with open(filename, 'r') as f:
-            data = json.load(f)
+    # dbname = 'COVID-19'
+    # user='operator'
+    # password='5302469'
+    # # host='localhost'
+    # host='127.0.0.1'
+    # port='2012'
+    # psql = MyPostgreSQL(dbname=dbname,user=user,password=password,host=host,port=port)    
+    # if args.all:
+    #     filename = 'DXYArea-TimeSeries.json'
+    #     with open(filename,'r',encoding='utf-8',errors='ignore') as f:
+    #         records=json.load(f)
+    #         DBSave(records)
+    #     filename = 'DXYOverall-TimeSeries.json'                   
+    #     with open(filename,'r',encoding='utf-8',errors='ignore') as f:
+    #         records=json.load(f)
+    #         extra = {'continentName':'亚洲','countryName':'中国'}
+    #         DBSave(records,**extra)        
+    # if args.cvs:
+    #     filename = args.cvs
+    #     DXY_csv_to_database(filename)
+    # if args.json:
+    #     filename = args.json
+    #     with open(filename, 'r') as f:
+    #         data = json.load(f)
             # logger.info('type(data)=%r',type(data))        
     crawl_NCP_qq()
-    url = "https://lab.isaaclin.cn/nCoV/api/area"
-    crawl_NCP(url=url,params=params,timeout=timeout)
-    url = "https://lab.isaaclin.cn/nCoV/api/overall"
-    crawl_NCP(url=url,params=params,timeout=timeout)
+    crawl_NCP()
     # url = 'https://ncov.dxy.cn/ncovh5/view/pneumonia'
     # crawl_NCP_dingxiang(url=url,timeout=timeout)

@@ -78,3 +78,15 @@ CREATE TABLE IF NOT EXISTS "nameMap" (
     "EnglishName" VARCHAR NOT NULL
 );
 ALTER TABLE IF EXISTS "nameMap" ADD CONSTRAINT "nameMap_unique" UNIQUE ("name","EnglishName");
+
+BEGIN;
+DROP TABLE IF EXISTS rumors;
+CREATE TABLE IF NOT EXISTS rumors (
+    id serial,
+    update date NOT null,
+    title varchar NOT null,
+    summary varchar,
+    content varchar
+) ;
+ALTER TABLE IF EXISTS rumors ADD CONSTRAINT rumors_unique UNIQUE (update,title);
+COMMIT;
