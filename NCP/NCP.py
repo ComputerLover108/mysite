@@ -283,16 +283,19 @@ def save(record):
 
 def crawl_NCP():
     try:
+        headers = {'User-Agent': random.choice(user_agent_list)}
+        timeout = (9,60)
+
         url = "https://lab.isaaclin.cn/nCoV/api/area"
-        timeout = 9
         response = requests.get(url,headers=headers,timeout=timeout)
+        response.raise_for_status()
         json_reads = response.json()
         records=json_reads["results"]
         DBSave(records)
 
         url = "https://lab.isaaclin.cn/nCoV/api/overall"
-        timeout = 3
         response = requests.get(url,headers=headers,timeout=timeout)
+        response.raise_for_status()
         json_reads = response.json()
         records=json_reads["results"]
         extra = {'continentName':'亚洲','countryName':'中国'}
@@ -300,9 +303,9 @@ def crawl_NCP():
 
         # 爬取谣言
         url = "https://lab.isaaclin.cn/nCoV/api/rumors"
-        params = {"page":1,"num":100}
-        timeout = 3
+        params = {"page" : "1","num" : "100"}
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
+        response.raise_for_status()
         json_reads = response.json()
         rumors_records = json_reads["results"]
         # 从指定json文件中提取数据
@@ -350,9 +353,9 @@ def crawl_NCP():
 
         # 爬取新冠新闻
         url = "https://lab.isaaclin.cn/nCoV/api/news"
-        params = {"page":1,"num":100}
-        timeout = 3
+        params = {"page" : "1","num" : "100"}
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
+        response.raise_for_status()
         json_reads = response.json()
         news_records = json_reads["results"]
         # 从指定json文件中提取数据
@@ -400,14 +403,14 @@ def crawl_NCP():
         }
         save(data)
 
-    except ReadTimeout:
-        logger.info('%r timeout',url)
-    except HTTPError:
-        logger.info('%r httperror',url)
-    except RequestException:
-        logger.info('%r reqerror',url) 
-    except Exception:
-        msg = '{} 数据爬取失败：{}'.format(url)
+    # except ReadTimeout:
+    #     logger.info('%r timeout',url)
+    # except HTTPError:
+    #     logger.info('%r httperror',url)
+    # except RequestException:
+    #     logger.info('%r reqerror',url) 
+    except Exception as e:
+        msg = 'crawl_NCP failure：{}'.format(e)
         logger.error(msg)
     return
 
