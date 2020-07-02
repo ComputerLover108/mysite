@@ -11,7 +11,8 @@ import argparse
 import random
 import re
 from bs4 import BeautifulSoup
-from requests.exceptions import ReadTimeout,HTTPError,RequestException
+# from requests.exceptions import ReadTimeout,HTTPError,RequestException
+import multiprocessing
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level = logging.INFO)
@@ -38,7 +39,7 @@ user_agent_list = [
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36 Maxthon/5.3.8.2000',
     'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:68.9) Gecko/20100101 Goanna/4.4 Firefox/68.9 PaleMoon/28.8.4'
 ]
-headers = {'User-Agent': random.choice(user_agent_list)}
+# headers = {'User-Agent': random.choice(user_agent_list)}
 nameMap = dict()
 
 class MyPostgreSQL:
@@ -74,7 +75,9 @@ class MyPostgreSQL:
             self.cursor.execute(SQL)
         self.conn.commit()
 
-def DBSave(records,**extra):
+# https://lab.isaaclin.cn/nCoV/api
+# 疫情数据处理，并存入数据库中
+def NCP_save(records,**extra):
     rows=[]
     global_rows=[]
     country_rows=[]
@@ -208,14 +211,14 @@ def DBSave(records,**extra):
             continue     
         if row:
             rows.append(row)
-    logger.info('global_rows counts %r',len(global_rows))
-    logger.info('country_rows counts %r',len(country_rows))
-    logger.info('province_rows count %r',len(province_rows))
-    logger.info('rows count %r',len(rows))
+    logger.info('NCP global records counts %r',len(global_rows))
+    logger.info('NCP country records counts %r',len(country_rows))
+    logger.info('NCP province records count %r',len(province_rows))
+    logger.info('NCP records count %r',len(rows))
     # logger.info('nameMap = %r',nameMap)
-    filename = 'nameMap.json'
-    with open(filename,'w') as f:
-        json.dump(nameMap,f,ensure_ascii=False,indent=4,sort_keys=True)    
+    # filename = 'nameMap.json'
+    # with open(filename,'w') as f:
+    #     json.dump(nameMap,f,ensure_ascii=False,indent=4,sort_keys=True)    
     if global_rows:
         name = 'global'
         columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
@@ -259,6 +262,7 @@ def DBSave(records,**extra):
     #     writer.writerows(records)
     # psql.cursor.copy_from(csvfile, 'ncp',columns=fieldnames,sep=',', size=16384) 
 
+# 数据存入数据库
 def save(record):
     table = record['table']
     columns = record['columns'] 
@@ -281,74 +285,139 @@ def save(record):
     psql.cursor.executemany(SQL,rows)
     psql.conn.commit()    
 
+# 全球疫情信息分析
+def json_NCP_world(data):
+    records = data["results"]
+    NCP_save(records)
+
+# 全国疫情概览
+def json_NCP_China(data):
+    records = data["results"]
+    extra = {'continentName':'亚洲','countryName':'中国'}
+    NCP_save(records,**extra)
+
+# 新冠新闻
+def json_NCP_news(data):
+    records = data["results"]
+    # 从指定json文件中提取数据
+    # filename = "news.json"
+    # with open(filename, 'r') as f:
+    #     data = json.load(f)
+    #     records = data         
+    logger.info("news records count %r",len(records))
+    # logger.info("news:\n%r",json_reads)
+    rows = []
+    for record in records:
+        row=[]
+        title = record["title"]
+        summary = record["summary"]
+        infoSource = record["infoSource"]
+        sourceUrl = record["sourceUrl"]
+        if "pubDate" in record:
+            dt = record["pubDate"]
+            if isinstance(dt,str):
+                d = datetime.datetime.fromtimestamp(int(dt)/1000.0,tz=None)
+                # logger.info("d = %r",d)
+            elif isinstance(dt,int):
+                d = datetime.datetime.fromtimestamp(dt/1000.0,tz=None)
+            # elif isinstance(dt,int):
+            #     d = datetime.datetime.fromisoformat(int(dt))
+                # logger.info("d = %r",d)
+            else:
+                logger.info("record failure %r",record)
+                continue
+            sd = d.strftime("%Y-%m-%d")                
+        # else:
+        #     sd = datetime.date.today()
+        update = sd
+        row = [update,title,summary,infoSource,sourceUrl]
+        rows.append(row)
+        # logger.info("news:%r,%r,%r,%r",update,title,summary,content)
+    name = 'news'
+    columns = ["update","title","summary","infoSource","sourceUrl"]
+    coreColumns = ["update","title"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+
+# 新冠谣言
+def json_NCP_rumors(data):
+    records = data["results"]
+    # 从指定json文件中提取数据
+    # filename = "rumors.json"
+    # with open(filename, 'r') as f:
+    #     data = json.load(f)
+    #     records = data         
+    logger.info("rumors records count %r",len(records))
+    # logger.info("rumors:\n%r",json_reads)
+    rows = []
+    for record in records:
+        row=[]
+        title = record["title"]
+        summary = record["mainSummary"]
+        content = record["body"]
+        if "crawlTime" in record:
+            dt = record["crawlTime"]
+            # logger.info('type(dt)=%r,dt=%r',type(dt),dt)
+            # logger.info('%r\n',record)
+            if isinstance(dt,int):
+                d = datetime.datetime.fromtimestamp(dt/1000.0,tz=None)
+            elif isinstance(dt,int):
+                d = datetime.datetime.fromisoformat(dt)
+            sd = d.strftime("%Y-%m-%d")                
+        else:
+            sd = datetime.date.today()
+        update = sd
+        row = [update,title,summary,content]
+        rows.append(row)
+        # logger.info("rumors:%r,%r,%r,%r",update,title,summary,content)
+    name = 'rumors'
+    columns = ["update","title","summary","content"]
+    coreColumns = ["update","title"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+    # filename = 'rumors1.json'
+    # with open(filename,'w') as f:
+    #     json.dump(records,f,ensure_ascii=False,indent=4,sort_keys=True) 
+
+# https://lab.isaaclin.cn/nCoV/api 网站新冠疫情数据爬取
 def crawl_NCP():
     try:
         headers = {'User-Agent': random.choice(user_agent_list)}
         timeout = (9,60)
 
+        # 全球疫情信息
         url = "https://lab.isaaclin.cn/nCoV/api/area"
         response = requests.get(url,headers=headers,timeout=timeout)
         response.raise_for_status()
-        json_reads = response.json()
-        records=json_reads["results"]
-        DBSave(records)
+        data = response.json()
+        json_NCP_world(data)
 
+
+        # 全国疫情概览
         url = "https://lab.isaaclin.cn/nCoV/api/overall"
         response = requests.get(url,headers=headers,timeout=timeout)
         response.raise_for_status()
-        json_reads = response.json()
-        records=json_reads["results"]
-        extra = {'continentName':'亚洲','countryName':'中国'}
-        DBSave(records,**extra)
+        data = response.json()
+        json_NCP_China(data)
+
 
         # 爬取谣言
         url = "https://lab.isaaclin.cn/nCoV/api/rumors"
         params = {"page" : "1","num" : "100"}
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
         response.raise_for_status()
-        json_reads = response.json()
-        rumors_records = json_reads["results"]
-        # 从指定json文件中提取数据
-        # filename = "rumors.json"
-        # with open(filename, 'r') as f:
-        #     data = json.load(f)
-        #     rumors_records = data         
-        logger.info("rumors_records count %r",len(rumors_records))
-        # logger.info("rumors:\n%r",json_reads)
-        rows = []
-        for record in rumors_records:
-            row=[]
-            title = record["title"]
-            summary = record["mainSummary"]
-            content = record["body"]
-            if "crawlTime" in record:
-                dt = record["crawlTime"]
-                # logger.info('type(dt)=%r,dt=%r',type(dt),dt)
-                # logger.info('%r\n',record)
-                if isinstance(dt,int):
-                    d = datetime.datetime.fromtimestamp(dt/1000.0,tz=None)
-                elif isinstance(dt,int):
-                    d = datetime.datetime.fromisoformat(dt)
-                sd = d.strftime("%Y-%m-%d")                
-            else:
-                sd = datetime.date.today()
-            update = sd
-            row = [update,title,summary,content]
-            rows.append(row)
-            # logger.info("rumors:%r,%r,%r,%r",update,title,summary,content)
-        name = 'rumors'
-        columns = ["update","title","summary","content"]
-        coreColumns = ["update","title"]
-        data={
-            'table':name,
-            'columns':columns,
-            'coreColumns':coreColumns,
-            'rows':rows
-        }
-        save(data)
-        # filename = 'rumors1.json'
-        # with open(filename,'w') as f:
-        #     json.dump(rumors_records,f,ensure_ascii=False,indent=4,sort_keys=True) 
+        data = response.json()
+        json_NCP_rumors(data)
 
 
         # 爬取新冠新闻
@@ -356,63 +425,12 @@ def crawl_NCP():
         params = {"page" : "1","num" : "100"}
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
         response.raise_for_status()
-        json_reads = response.json()
-        news_records = json_reads["results"]
-        # 从指定json文件中提取数据
-        # filename = "news.json"
-        # with open(filename, 'r') as f:
-        #     data = json.load(f)
-        #     news_records = data         
-        logger.info("news_records count %r",len(news_records))
-        # logger.info("news:\n%r",json_reads)
-        rows = []
-        for record in news_records:
-            row=[]
-            title = record["title"]
-            summary = record["summary"]
-            infoSource = record["infoSource"]
-            sourceUrl = record["sourceUrl"]
-            if "pubDate" in record:
-                dt = record["pubDate"]
-                if isinstance(dt,str):
-                    d = datetime.datetime.fromtimestamp(int(dt)/1000.0,tz=None)
-                    # logger.info("d = %r",d)
-                elif isinstance(dt,int):
-                    d = datetime.datetime.fromtimestamp(dt/1000.0,tz=None)
-                # elif isinstance(dt,int):
-                #     d = datetime.datetime.fromisoformat(int(dt))
-                    # logger.info("d = %r",d)
-                else:
-                    logger.info("record failure %r",record)
-                    continue
-                sd = d.strftime("%Y-%m-%d")                
-            # else:
-            #     sd = datetime.date.today()
-            update = sd
-            row = [update,title,summary,infoSource,sourceUrl]
-            rows.append(row)
-            # logger.info("news:%r,%r,%r,%r",update,title,summary,content)
-        name = 'news'
-        columns = ["update","title","summary","infoSource","sourceUrl"]
-        coreColumns = ["update","title"]
-        data={
-            'table':name,
-            'columns':columns,
-            'coreColumns':coreColumns,
-            'rows':rows
-        }
-        save(data)
-
-    # except ReadTimeout:
-    #     logger.info('%r timeout',url)
-    # except HTTPError:
-    #     logger.info('%r httperror',url)
-    # except RequestException:
-    #     logger.info('%r reqerror',url) 
+        data = response.json()
+        json_NCP_news(data)
+ 
     except Exception as e:
         msg = 'crawl_NCP failure：{}'.format(e)
         logger.error(msg)
-    return
 
 def crawl_NCP_dingxiang(url,timeout):
     response = requests.get(url,headers=headers,timeout=timeout)
@@ -880,8 +898,11 @@ if __name__ == '__main__':
     #     filename = args.json
     #     with open(filename, 'r') as f:
     #         data = json.load(f)
-            # logger.info('type(data)=%r',type(data))        
-    crawl_NCP_qq()
-    crawl_NCP()
+            # logger.info('type(data)=%r',type(data))
+    p1 = multiprocessing.Process(target=crawl_NCP)
+    p2 = multiprocessing.Process(target=crawl_NCP_qq)
+
+    p1.start()
+    p2.start()
     # url = 'https://ncov.dxy.cn/ncovh5/view/pneumonia'
     # crawl_NCP_dingxiang(url=url,timeout=timeout)
