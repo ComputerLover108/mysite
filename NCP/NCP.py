@@ -285,6 +285,12 @@ def save(record):
     psql.cursor.executemany(SQL,rows)
     psql.conn.commit()    
 
+# json数据存入json文件
+def save_to_file(file,data):
+    # json_str = json.dumps(data, indent=4)
+    with open(file, 'w') as json_file:
+        json_file.write(data)
+
 # 全球疫情信息分析
 def json_NCP_world(data):
     records = data["results"]
@@ -389,6 +395,264 @@ def json_NCP_rumors(data):
     # with open(filename,'w') as f:
     #     json.dump(records,f,ensure_ascii=False,indent=4,sort_keys=True) 
 
+# QQ新冠全国疫情
+def json_NCP_QQ_disease(data):
+    json_data = json.loads(data)
+    globalSummaryRecords=[]
+    totoalProvinceRecords=[]
+    totalCityRecords=[]     
+    rows = []
+    records = json_data['areaTree']
+    for record in records:
+        update = datetime.date.fromtimestamp(time.time()).isoformat()
+        continent = '亚洲'
+        country = '中国'
+        remark = ''
+        confirmation=record['total']['nowConfirm']
+        totalConfirmation=record['total']['confirm']
+        suspect = record['total']['suspect']
+        cure = record['total']['heal']
+        dead = record['total']['dead']
+        row=[update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
+        # logger.info('china row=%r',row)
+        rows.append(row)
+        if 'children' in record:
+            provinceRecords = record['children']
+            for x in provinceRecords:
+                provinceRecord={}
+                provinceRecord['update'] = update
+                provinceRecord['country'] = country
+                provinceRecord['province'] = x['name']
+                provinceRecord['confirmation']=x['total']['nowConfirm']
+                provinceRecord['totalConfirmation']=x['total']['confirm']
+                provinceRecord['suspect'] = x['total']['suspect']
+                provinceRecord['cure'] = x['total']['heal']
+                provinceRecord['dead'] = x['total']['dead']
+                provinceRecord['remark'] = ''
+                totoalProvinceRecords.append(provinceRecord)
+                province = provinceRecord['province']
+                if 'children' in x:
+                    cityRecords = x['children']
+                    for xx in cityRecords:
+                        cityRecord={}
+                        cityRecord['update'] = update
+                        cityRecord['country'] = country
+                        cityRecord['province'] = province
+                        cityRecord['city'] = xx['name']
+                        cityRecord['confirmation']=xx['total']['nowConfirm']
+                        cityRecord['totalConfirmation']=xx['total']['confirm']
+                        cityRecord['suspect'] = xx['total']['suspect']
+                        cityRecord['cure'] = xx['total']['heal']
+                        cityRecord['dead'] = xx['total']['dead']
+                        cityRecord['remark'] = ''
+                        totalCityRecords.append(cityRecord)                                                             
+                        # logger.info('confirmation=%r',cityRecord['confirmation'])
+                        # logger.info('xx[total][nowConfirm]=%r',xx['total']['nowConfirm'])
+   
+    # 省或州等一级单位新冠疫情数据
+    for record in totoalProvinceRecords:
+        row=[]
+        record['confirmation'] = record['confirmation'] if 'confirmation' in record else 0
+        record['suspect'] = record['suspect'] if 'suspect' in record else 0
+        row.append(record['update'])
+        row.append(record['country'])
+        row.append(record['province'])
+        row.append(record['confirmation'])
+        row.append(record['totalConfirmation'])
+        row.append(record['suspect'])
+        row.append(record['cure'])
+        row.append(record['dead'])
+        row.append(record['remark'])
+        rows.append(row)
+    name = "country"
+    constraint='country_unique'
+    columns = ["update","country","province","confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+    logger.info('China totoalProvinceRecords 共有%r条记录。',len(totoalProvinceRecords))
+
+    # 城市，二级单位新冠疫情数据
+    rows=[]    
+    for record in totalCityRecords:
+        row=[]
+        record['confirmation'] = record['confirmation'] if 'confirmation' in record else 0
+        record['suspect'] = record['suspect'] if 'suspect' in record else 0
+        record['totalConfirmation'] = record['totalConfirmation'] if 'totalConfirmation' in record else 0
+        row.append(record['update'])
+        row.append(record['country'])
+        row.append(record['province'])
+        row.append(record['city'])
+        row.append(record['confirmation'])
+        row.append(record['totalConfirmation'])
+        row.append(record['suspect'])
+        row.append(record['cure'])
+        row.append(record['dead'])
+        row.append(record['remark'])
+        rows.append(row)
+        # logger.info('cityRecord=%r',record)
+    name = "province"
+    constraint='province_unique'
+    columns = ["update","country","province","city","confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+    logger.info('China totalCityRecords 共有%r条记录。',len(totalCityRecords))
+    
+# QQ新冠全国疫情历史数据
+def json_NCP_QQ_disease_other(data):
+    json_data = json.loads(data)
+    rows =[]
+    records = json_data['chinaDayList']
+    for record in records:
+        continent = '亚洲'
+        country = '中国'
+        remark = '' 
+        temp=record['date'].split('.')
+        sd = '2020-'+temp[0]+'-'+temp[1]
+        update = datetime.date.fromisoformat(sd).isoformat()
+        confirmation=record['nowConfirm']
+        totalConfirmation=record['confirm']
+        suspect = record['suspect']
+        cure = record['heal']
+        dead = record['dead']
+        row=[update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
+        rows.append(row)
+        # logger.info('%r\n',row)
+
+    name = 'global'
+    columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+    logger.info('China total records 共有%r条记录。',len(rows))    
+
+# QQ新冠全球疫情
+def json_NCP_QQ_disease_foreign(data):
+    globalSummaryRecords=[]
+    totoalProvinceRecords=[]   
+    rows = []
+    json_data = json.loads(data)
+    records = json_data['foreignList']
+    # logger.info('json_NCP_QQ_disease_foreign:\n %r',records)
+    for record in records:
+        remark = ''
+        temp=record['date'].split('.')
+        sd = '2020-'+temp[0]+'-'+temp[1]
+        update = datetime.date.fromisoformat(sd).isoformat()
+        continent = record['continent']            
+        country = record['name']
+        confirmation=record['nowConfirm']
+        totalConfirmation=record['confirm']
+        suspect = record['suspect']
+        cure = record['heal']
+        dead = record['dead']
+        row=[update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
+        if 'children' in record:
+            provinceRecords = record['children']
+            for record in provinceRecords:
+                temp=record['date'].split('.')
+                sd = '2020-'+temp[0]+'-'+temp[1]                
+                record['remark'] = ''
+                record['country'] = country
+                record['province'] = record.pop('name')
+                record['update'] = datetime.date.fromisoformat(sd).isoformat()
+                # record['confirmation']=record.pop('nowConfirm')
+                record['totalConfirmation']=record.pop('confirm')
+                record['cure'] = record.pop('heal')
+                totoalProvinceRecords.append(record)                  
+        rows.append(row)
+
+    name = 'global'
+    columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+    logger.info('global records 共有%r条记录。',len(rows))
+
+    # 省或州等一级单位新冠疫情数据
+    for record in totoalProvinceRecords:
+        row=[]
+        record['confirmation'] = record['confirmation'] if 'confirmation' in record else 0
+        record['suspect'] = record['suspect'] if 'suspect' in record else 0
+        row.append(record['update'])
+        row.append(record['country'])
+        row.append(record['province'])
+        row.append(record['confirmation'])
+        row.append(record['totalConfirmation'])
+        row.append(record['suspect'])
+        row.append(record['cure'])
+        row.append(record['dead'])
+        row.append(record['remark'])
+        rows.append(row)
+    name = "country"
+    constraint='country_unique'
+    columns = ["update","country","province","confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+    logger.info('global totoalProvinceRecords 共有%r条记录。',len(totoalProvinceRecords))
+
+    # 各国新冠历史数据
+    rows = []
+    records = json_data['globalDailyHistory']               
+    for record in records:
+        if record['date'].count('.')==1:
+            year = '2020'
+            month,day = record['date'].split('.')
+        elif record['date'].count('.')==2:
+            year,month,day=record['date'].split('.')
+        else:
+            msg='{}不是有效的日期格式！'.format(record['date'])
+            logger.error(msg)
+            continue
+        update = datetime.date(int(year),int(month),int(day))
+        confirm=record['all']['confirm']
+        cure = record['all']['heal']
+        dead = record['all']['dead']
+        deadRate=record['all']['deadRate']            
+        cureRate=record['all']['healRate']
+        row=[update,confirm,cure,dead,cureRate,deadRate]
+        rows.append(row)
+        # logger.info('globalDailyHistory:\n %r',row)
+
+    name = 'globalSummary'
+    columns = ["update","confirm","cure","dead","cureRate","deadRate"]
+    coreColumns = ["confirm","cure","dead","cureRate","deadRate"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+    logger.info('globalSummaryRecords 共有%r条记录。',len(rows))
+
 # https://lab.isaaclin.cn/nCoV/api 网站新冠疫情数据爬取
 def crawl_NCP():
     try:
@@ -465,289 +729,69 @@ def crawl_NCP_dingxiang(url,timeout):
 
 def crawl_NCP_qq():
     # 腾讯数据接口
-    # url='https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5'
-    # url='https://view.inews.qq.com/g2/getOnsInfo?name=disease_other'    
-    # 国内
-    url='https://view.inews.qq.com/g2/getOnsInfo'
-    headers = {'User-Agent': random.choice(user_agent_list)}
-    timeout = 9
-    params = {}
-    params['name'] = 'disease_h5'
-    params['callback'] = 'jQuery341001657575837432268_1581070969707'
-    # params['_'] = '1581070969708'
-    params['_'] = int(time.time()*1000)
-    # url = 'https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5&callback=jQuery341001657575837432268_1581070969707&_=1581070969708'
-    # url='https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5'
-    try:
+    # https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5
+    # https://view.inews.qq.com/g2/getOnsInfo?name=disease_other
+    # https://view.inews.qq.com/g2/getOnsInfo?name=disease_foreign  
+ 
+    try:      
+        url='https://view.inews.qq.com/g2/getOnsInfo'
+        headers = {'User-Agent': random.choice(user_agent_list)}
+        timeout = (9,60)
+        params = {}
+
+        # 中国各省市当日实时数据
+        params['name'] = 'disease_h5'        
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
-        content = response.text
-        a = params['callback']+'('
-        b = content.split(a)[1].split(')')[0]
-        c = json.loads(b)
-        china_json = json.loads(c['data'])
-        # logger.info('china_json=%r',china_json.keys())    
-    except Exception:
-        msg = '{} 数据爬取失败：{}'.format(url)
-        logger.error(msg)
-    # 国外
-    url = 'https://view.inews.qq.com/g2/getOnsInfo'
-    params['name'] = 'disease_foreign'
-    params['callback'] = 'jQuery34108116985782396278_1584837309333'
-    params['_'] =  int(time.time()*1000)
-    try:
+        response.raise_for_status()
+        result = response.json()
+        china_json =result['data']
+
+        # 中国历史数据及每日新增数据
+        params['name']='disease_other'
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
-        # logger.info('url=%r\nheaders=%r\n,params=%r\n,timeout=%r\n',url,headers,params,timeout)
-        content = response.text
-        a = params['callback']+'('
-        b = content.split(a)[1].split(')')[0]
-        c = json.loads(b)
-        foreign_json = json.loads(c['data'])
-        # logger.info('foreign_json=%r',foreign_json.keys())
-    except Exception:
-        msg = '{} 数据爬取失败：{}'.format(url)
-        logger.error(msg)
+        response.raise_for_status()
+        result = response.json()
+        other_json = result['data']
 
-    url='https://view.inews.qq.com/g2/getOnsInfo'
-    del params['callback']
-    del params['_']
-    params['name']='disease_other'
-    try:
+        # 全球实时数据及历史数据、中国输入病例
+        params['name'] = 'disease_foreign'
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
-        # logger.info('url=%r\nheaders=%r\n,params=%r\n,timeout=%r\n',url,headers,params,timeout)    
-        content = response.json()['data']
-        other_json=json.loads(content)
-        # logger.info(other_json)
-    except Exception:
-        msg = '{} 数据爬取失败：{}'.format(url)
-        logger.error(msg)
-    rows=[]
-    row=[]
-    globalSummaryRecords=[]
-    totoalProvinceRecords=[]
-    totalCityRecords=[]
-    data=china_json.copy()
-    data.update(foreign_json)
-    data.update(other_json)
-    # logger.info('chinaDayList=%r',data['chinaDayList'])
-    # logger.info('foreignList=%r',data['foreignList'])
-    # logger.info('areaTree=%r',data['areaTree'])
-    filename = 'NCP_QQ.json'
-    json_str = json.dumps(data, indent=4)
-    with open(filename, 'w') as json_file:
-        json_file.write(json_str)             
-    if data:
-        records = data['chinaDayList']
-        for record in records:
-            continent = '亚洲'
-            country = '中国'
-            remark = '' 
-            temp=record['date'].split('.')
-            sd = '2020-'+temp[0]+'-'+temp[1]
-            update = datetime.date.fromisoformat(sd).isoformat()
-            confirmation=record['nowConfirm']
-            totalConfirmation=record['confirm']
-            suspect = record['suspect']
-            cure = record['heal']
-            dead = record['dead']
-            row=[update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
-            rows.append(row)
-            # logger.info('%r\n',row)        
-        records = data['foreignList']
-        for record in records:
-            remark = ''
-            temp=record['date'].split('.')
-            sd = '2020-'+temp[0]+'-'+temp[1]
-            update = datetime.date.fromisoformat(sd).isoformat()
-            continent = record['continent']            
-            country = record['name']
-            confirmation=record['nowConfirm']
-            totalConfirmation=record['confirm']
-            suspect = record['suspect']
-            cure = record['heal']
-            dead = record['dead']
-            row=[update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
-            if 'children' in record:
-                provinceRecords = record['children']
-                for record in provinceRecords:
-                    temp=record['date'].split('.')
-                    sd = '2020-'+temp[0]+'-'+temp[1]                
-                    record['remark'] = ''
-                    record['country'] = country
-                    record['province'] = record.pop('name')
-                    record['update'] = datetime.date.fromisoformat(sd).isoformat()
-                    # record['confirmation']=record.pop('nowConfirm')
-                    record['totalConfirmation']=record.pop('confirm')
-                    record['cure'] = record.pop('heal')
-                    totoalProvinceRecords.append(record)                  
-            rows.append(row)
-        records = data['areaTree']
-        for record in records:
-            update = datetime.date.fromtimestamp(time.time()).isoformat()
-            continent = '亚洲'
-            country = '中国'
-            remark = ''
-            confirmation=record['total']['nowConfirm']
-            totalConfirmation=record['total']['confirm']
-            suspect = record['total']['suspect']
-            cure = record['total']['heal']
-            dead = record['total']['dead']
-            row=[update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
-            # logger.info('china row=%r',row)
-            rows.append(row)
-            if 'children' in record:
-                provinceRecords = record['children']
-                for x in provinceRecords:
-                    provinceRecord={}
-                    provinceRecord['update'] = update
-                    provinceRecord['country'] = country
-                    provinceRecord['province'] = x['name']
-                    provinceRecord['confirmation']=x['total']['nowConfirm']
-                    provinceRecord['totalConfirmation']=x['total']['confirm']
-                    provinceRecord['suspect'] = x['total']['suspect']
-                    provinceRecord['cure'] = x['total']['heal']
-                    provinceRecord['dead'] = x['total']['dead']
-                    provinceRecord['remark'] = ''
-                    totoalProvinceRecords.append(provinceRecord)
-                    province = provinceRecord['province']
-                    if 'children' in x:
-                        cityRecords = x['children']
-                        for xx in cityRecords:
-                            cityRecord={}
-                            cityRecord['update'] = update
-                            cityRecord['country'] = country
-                            cityRecord['province'] = province
-                            cityRecord['city'] = xx['name']
-                            cityRecord['confirmation']=xx['total']['nowConfirm']
-                            cityRecord['totalConfirmation']=xx['total']['confirm']
-                            cityRecord['suspect'] = xx['total']['suspect']
-                            cityRecord['cure'] = xx['total']['heal']
-                            cityRecord['dead'] = xx['total']['dead']
-                            cityRecord['remark'] = ''
-                            totalCityRecords.append(cityRecord)                                                             
-                            # logger.info('confirmation=%r',cityRecord['confirmation'])
-                            # logger.info('xx[total][nowConfirm]=%r',xx['total']['nowConfirm'])
-        records = data['globalDailyHistory']                
-        for record in records:
-            if record['date'].count('.')==1:
-                year = '2020'
-                month,day = record['date'].split('.')
-            elif record['date'].count('.')==2:
-                year,month,day=record['date'].split('.')
-            else:
-                msg='{}不是有效的日期格式！'.format(record['date'])
-                logger.error(msg)
-                continue
-            globalSummaryRecord={}
-            update = datetime.date(int(year),int(month),int(day))
-            confirm=record['all']['confirm']
-            cure = record['all']['heal']
-            dead = record['all']['dead']
-            deadRate=record['all']['deadRate']            
-            cureRate=record['all']['healRate']
-            globalSummaryRecord['update'] = update
-            globalSummaryRecord['confirm']=confirm
-            globalSummaryRecord['cure'] =cure
-            globalSummaryRecord['dead'] = dead
-            globalSummaryRecord['deadRate'] = deadRate
-            globalSummaryRecord['cureRate'] = cureRate
-            globalSummaryRecords.append(globalSummaryRecord)
-            # row=[update,confirmation,cure,dead,cureRate,deadRate]
-            # logger.info('%r,%r,%r,%r,%r,%r\n',update,confirmation,cure,dead,cureRate,deadRate)
-            # rows.append(row)
-    
-    name = 'global'
-    columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    data={
-        'table':name,
-        'columns':columns,
-        'coreColumns':coreColumns,
-        'rows':rows
-    }
-    save(data)      
+        response.raise_for_status()
+        result = response.json()
+        foreign_json = result['data']
+        # logger.info('%r',foreign_json)
+        
+        # fileName = "NCP_QQ_disease_h5.json"
+        # save_to_file(fileName,china_json)
+        # fileName = "NCP_QQ_disease_other.json"
+        # save_to_file(fileName,other_json)
+        # fileName = "NCP_QQ_disease_foreign.json"
+        # save_to_file(fileName,foreign_json)
+        # 并行存入文件
+        ps1 = multiprocessing.Process(target=save_to_file,args=('NCP_QQ_disease_h5.json',china_json))
+        ps2 = multiprocessing.Process(target=save_to_file,args=('NCP_QQ_disease_other.json',other_json))
+        ps3 = multiprocessing.Process(target=save_to_file,args=('NCP_QQ_disease_foreign.json',foreign_json))
 
-    rows=[]    
-    for record in globalSummaryRecords:
-        row=[]
-        record['confirm'] = record['confirm'] if 'confirm' in record else 0
-        row.append(record['update'])
-        row.append(record['confirm'])
-        row.append(record['cure'])
-        row.append(record['dead'])
-        row.append(record['cureRate'])
-        row.append(record['deadRate'])
-        rows.append(row)
-    name = 'globalSummary'
-    columns = ["update","confirm","cure","dead","cureRate","deadRate"]
-    coreColumns = ["confirm","cure","dead","cureRate","deadRate"]
-    data={
-        'table':name,
-        'columns':columns,
-        'coreColumns':coreColumns,
-        'rows':rows
-    }
-    save(data) 
+        ps1.start()
+        ps2.start()
+        ps3.start()
+        # json_NCP_QQ_disease(china_json)
+        # json_NCP_QQ_disease_other(other_json)
+        # json_NCP_QQ_disease_foreign(foreign_json)
+        # 并行处理，并存入数据库        
+        p1 = multiprocessing.Process(target=json_NCP_QQ_disease,args=(china_json,))
+        p2 = multiprocessing.Process(target=json_NCP_QQ_disease_other,args=(other_json,))
+        p3 = multiprocessing.Process(target=json_NCP_QQ_disease_foreign,args=(foreign_json,))
 
-    rows=[]    
-    for record in totoalProvinceRecords:
-        row=[]
-        record['confirmation'] = record['confirmation'] if 'confirmation' in record else 0
-        record['suspect'] = record['suspect'] if 'suspect' in record else 0
-        row.append(record['update'])
-        row.append(record['country'])
-        row.append(record['province'])
-        row.append(record['confirmation'])
-        row.append(record['totalConfirmation'])
-        row.append(record['suspect'])
-        row.append(record['cure'])
-        row.append(record['dead'])
-        row.append(record['remark'])
-        rows.append(row)
-    name = "country"
-    constraint='country_unique'
-    columns = ["update","country","province","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    data={
-        'table':name,
-        'columns':columns,
-        'coreColumns':coreColumns,
-        'rows':rows
-    }
-    save(data)
+        p1.start()
+        p2.start()
+        p3.start()
 
-    rows=[]    
-    for record in totalCityRecords:
-        row=[]
-        record['confirmation'] = record['confirmation'] if 'confirmation' in record else 0
-        record['suspect'] = record['suspect'] if 'suspect' in record else 0
-        record['totalConfirmation'] = record['totalConfirmation'] if 'totalConfirmation' in record else 0
-        row.append(record['update'])
-        row.append(record['country'])
-        row.append(record['province'])
-        row.append(record['city'])
-        row.append(record['confirmation'])
-        row.append(record['totalConfirmation'])
-        row.append(record['suspect'])
-        row.append(record['cure'])
-        row.append(record['dead'])
-        row.append(record['remark'])
-        rows.append(row)
-        # logger.info('cityRecord=%r',record)
-    name = "province"
-    constraint='province_unique'
-    columns = ["update","country","province","city","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    data={
-        'table':name,
-        'columns':columns,
-        'coreColumns':coreColumns,
-        'rows':rows
-    }
-    save(data)
-   
-    logger.info('totoalProvinceRecords 共有%r条记录。',len(totoalProvinceRecords))
-    logger.info('totalCityRecords 共有%r条记录。',len(totalCityRecords))    
-    logger.info('globalSummaryRecords 共有%r条记录。',len(globalSummaryRecords))
+        
+
+    except Exception as e:
+        logger.error('crawl_NCP_qq failure: %r',e)              
+
 
 def DXY_csv_to_database(filename):
     # logger.info("filename is %r",filename)
