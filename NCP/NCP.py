@@ -383,7 +383,7 @@ def json_NCP_rumors(data):
         # logger.info("rumors:%r,%r,%r,%r",update,title,summary,content)
     name = 'rumors'
     columns = ["update","title","summary","content"]
-    coreColumns = ["update","title"]
+    coreColumns = ["title","summary","content"]
     data={
         'table':name,
         'columns':columns,
@@ -666,7 +666,6 @@ def crawl_NCP():
         data = response.json()
         json_NCP_world(data)
 
-
         # 全国疫情概览
         url = "https://lab.isaaclin.cn/nCoV/api/overall"
         response = requests.get(url,headers=headers,timeout=timeout)
@@ -674,15 +673,8 @@ def crawl_NCP():
         data = response.json()
         json_NCP_China(data)
 
-
-        # 爬取谣言
-        url = "https://lab.isaaclin.cn/nCoV/api/rumors"
-        params = {"page" : "1","num" : "100"}
-        response = requests.get(url,headers=headers,params=params,timeout=timeout)
-        response.raise_for_status()
-        data = response.json()
-        json_NCP_rumors(data)
-
+        # 防止服务器拒绝
+        time.sleep(1)        
 
         # 爬取新冠新闻
         url = "https://lab.isaaclin.cn/nCoV/api/news"
@@ -691,6 +683,18 @@ def crawl_NCP():
         response.raise_for_status()
         data = response.json()
         json_NCP_news(data)
+
+        # 防止服务器拒绝
+        time.sleep(2)
+
+        # 爬取谣言
+        url = "https://lab.isaaclin.cn/nCoV/api/rumors"
+        params = {"page" : "1","num" : "100","rumorType" : "0"}
+        response = requests.get(url,headers=headers,params=params,timeout=timeout)
+        response.raise_for_status()
+        data = response.json()
+        json_NCP_rumors(data)
+
  
     except Exception as e:
         msg = 'crawl_NCP failure：{}'.format(e)
@@ -785,9 +789,7 @@ def crawl_NCP_qq():
 
         p1.start()
         p2.start()
-        p3.start()
-
-        
+        p3.start()     
 
     except Exception as e:
         logger.error('crawl_NCP_qq failure: %r',e)              
@@ -914,27 +916,9 @@ def DXY_csv_to_database(filename):
                   
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog = 'crawl NCP',description = '爬取新冠肺炎数据,默认爬取当天最新数据')
-    parser.add_argument("-a","--all",action="store_true",help='获得网站全部新冠肺炎数据，本地数据将被清除。')
     parser.add_argument("-c","--cvs",help='从指定csv文件中提取数据')
     parser.add_argument("-j","--json",help='从指定json文件中提取数据')
-    args = parser.parse_args()        
-    # dbname = 'COVID-19'
-    # user='operator'
-    # password='5302469'
-    # # host='localhost'
-    # host='127.0.0.1'
-    # port='2012'
-    # psql = MyPostgreSQL(dbname=dbname,user=user,password=password,host=host,port=port)    
-    # if args.all:
-    #     filename = 'DXYArea-TimeSeries.json'
-    #     with open(filename,'r',encoding='utf-8',errors='ignore') as f:
-    #         records=json.load(f)
-    #         DBSave(records)
-    #     filename = 'DXYOverall-TimeSeries.json'                   
-    #     with open(filename,'r',encoding='utf-8',errors='ignore') as f:
-    #         records=json.load(f)
-    #         extra = {'continentName':'亚洲','countryName':'中国'}
-    #         DBSave(records,**extra)        
+    args = parser.parse_args()              
     # if args.cvs:
     #     filename = args.cvs
     #     DXY_csv_to_database(filename)

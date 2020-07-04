@@ -88,8 +88,9 @@ CREATE TABLE IF NOT EXISTS rumors (
     "summary" varchar,
     "content" varchar
 ) ;
-ALTER TABLE IF EXISTS rumors ADD CONSTRAINT rumors_unique UNIQUE ("update","title");
+ALTER TABLE IF EXISTS rumors ADD CONSTRAINT rumors_unique UNIQUE ("title","summary","content");
 COMMIT;
+delete FROM rumors where id not in (SELECT max(id) FROM rumors GROUP by "title","summary","content");
 
 BEGIN;
 DROP TABLE if EXISTS news;
@@ -103,3 +104,4 @@ CREATE TABLE if not EXISTS news (
 );
 ALTER TABLE IF EXISTS news ADD CONSTRAINT news_unique UNIQUE ("update","title");
 COMMIT;
+
