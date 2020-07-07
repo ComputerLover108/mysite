@@ -120,7 +120,9 @@ def NCP_save(records,**extra):
                 continentName = extra['continentName']
                 countryName = extra['countryName']
             if "generalRemark" in record:
-                comment = record['generalRemark']            
+                comment = record['generalRemark']
+            elif "comment" in record:
+                comment = record['comment']           
             comment = comment if comment else ''
            
             currentConfirmedCount = record["currentConfirmedCount"] if "currentConfirmedCount" in record else None
@@ -293,18 +295,18 @@ def save_to_file(file,data):
 
 # 全球疫情信息分析
 def json_NCP_world(data):
-    records = data["results"]
+    records = data
     NCP_save(records)
 
 # 全国疫情概览
 def json_NCP_China(data):
-    records = data["results"]
+    records = data
     extra = {'continentName':'亚洲','countryName':'中国'}
     NCP_save(records,**extra)
 
 # 新冠新闻
 def json_NCP_news(data):
-    records = data["results"]
+    records = data
     # 从指定json文件中提取数据
     # filename = "news.json"
     # with open(filename, 'r') as f:
@@ -352,7 +354,7 @@ def json_NCP_news(data):
 
 # 新冠谣言
 def json_NCP_rumors(data):
-    records = data["results"]
+    records = data
     # 从指定json文件中提取数据
     # filename = "rumors.json"
     # with open(filename, 'r') as f:
@@ -547,6 +549,7 @@ def json_NCP_QQ_disease_foreign(data):
     globalSummaryRecords=[]
     totoalProvinceRecords=[]   
     rows = []
+    incrVo_rows = []
     json_data = json.loads(data)
     records = json_data['foreignList']
     # logger.info('json_NCP_QQ_disease_foreign:\n %r',records)
@@ -563,6 +566,7 @@ def json_NCP_QQ_disease_foreign(data):
         cure = record['heal']
         dead = record['dead']
         row=[update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
+        # logger.info('QQ: %r',row)
         if 'children' in record:
             provinceRecords = record['children']
             for record in provinceRecords:
@@ -578,6 +582,20 @@ def json_NCP_QQ_disease_foreign(data):
                 totoalProvinceRecords.append(record)                  
         rows.append(row)
 
+        if 'confirmAdd' in record:
+            currentConfirmedIncr = record['confirmAdd']
+        elif 'nowConfirmCompare' in record:
+            currentConfirmedIncr = record['nowConfirmCompare']
+        else:
+            currentConfirmedIncr = None
+        confirmedIncr = record['confirmCompare'] if 'confirmCompare' in record else None
+        curedIncr = record['healCompare'] if 'healCompare' in record else None
+        deadIncr = record['deadCompare'] if 'deadCompare' in record else None
+        # 全球新冠趋势详情
+        row = [update,continent,country,currentConfirmedIncr,confirmedIncr,curedIncr,deadIncr]
+        # logger.info('QQ: %r',row)
+        incrVo_rows.append(row)               
+
     name = 'global'
     columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
     coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
@@ -589,6 +607,19 @@ def json_NCP_QQ_disease_foreign(data):
     }
     save(data)
     logger.info('global records 共有%r条记录。',len(rows))
+
+    # 全球新冠趋势详情
+    name = 'globalTrend'
+    columns = ["update","continent","country","currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr"]
+    coreColumns = ["update","continent","country"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':incrVo_rows
+    }
+    save(data)
+    logger.info('丁香网 global trend records 共有%r条记录。',len(incrVo_rows))    
 
     # 省或州等一级单位新冠疫情数据
     for record in totoalProvinceRecords:
@@ -664,17 +695,22 @@ def crawl_NCP():
         response = requests.get(url,headers=headers,timeout=timeout)
         response.raise_for_status()
         data = response.json()
+        data = data['result']
         json_NCP_world(data)
+        
+        # 防止服务器拒绝
+        # time.sleep(3)
 
         # 全国疫情概览
         url = "https://lab.isaaclin.cn/nCoV/api/overall"
         response = requests.get(url,headers=headers,timeout=timeout)
         response.raise_for_status()
         data = response.json()
+        data = data['result']
         json_NCP_China(data)
 
         # 防止服务器拒绝
-        time.sleep(1)        
+        # time.sleep(3)        
 
         # 爬取新冠新闻
         url = "https://lab.isaaclin.cn/nCoV/api/news"
@@ -682,10 +718,11 @@ def crawl_NCP():
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
         response.raise_for_status()
         data = response.json()
+        data = data['result']
         json_NCP_news(data)
 
         # 防止服务器拒绝
-        time.sleep(2)
+        # time.sleep(2)
 
         # 爬取谣言
         url = "https://lab.isaaclin.cn/nCoV/api/rumors"
@@ -693,6 +730,7 @@ def crawl_NCP():
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
         response.raise_for_status()
         data = response.json()
+        data = data['result']
         json_NCP_rumors(data)
 
  
@@ -700,36 +738,164 @@ def crawl_NCP():
         msg = 'crawl_NCP failure：{}'.format(e)
         logger.error(msg)
 
-def crawl_NCP_dingxiang(url,timeout):
+# 丁香网新冠全球疫情
+def json_NCP_dx_world(data):
+    # nameMap = getNameMap()
+    records = data
+    rows = []
+    incrVo_rows = []
+    for record in records:
+        # logger.info('%r',record)
+        if  "modifyTime" in record:
+            dt = record[ "modifyTime" ]
+        elif "createTime" in record:
+            dt = record["createTime"]
+        else:
+            continue
+        if isinstance(dt,int):
+            d = datetime.datetime.fromtimestamp(dt/1000.0,tz=None)
+        else:
+            # logger.info('时间处理失败！')
+            continue
+        sd = d.strftime("%Y-%m-%d")
+        update = sd        
+        continent = record["continents"]
+        countryEnglishShortName = record["countryShortCode"]
+        countryEnglishName = record["countryFullName"]
+        countryShortName = record["provinceShortName"]
+        # country = record["provinceName"]
+        if countryEnglishName in nameMap:
+            country = nameMap[countryEnglishName]
+        else:
+            logger.info('%r 没有找到中文名字！')
+            continue
+        confirmation = record["currentConfirmedCount"]
+        totalConfirmation = record["confirmedCount"]
+        suspect = record["suspectedCount"]
+        cure = record["curedCount"]
+        dead = record["deadCount"]
+        remark = record["comment"]
+
+        deadRate = record["deadRate"] if "deadRate" in record else ''
+        # deadCountRank = record["deadCountRank"] if "deadCountRank" in record else ''
+        # deadRateRank = record["deadRateRank"] if "deadRateRank" in record else ''
+        # 全球新冠趋势详情
+        if "incrVo" in record:
+            temp = record["incrVo"]
+            # logger.info(temp)
+            currentConfirmedIncr = record["incrVo"]["currentConfirmedIncr"]
+            confirmedIncr = record["incrVo"]["confirmedIncr"]
+            curedIncr = record["incrVo"]["curedIncr"]
+            deadIncr = record["incrVo"]["deadIncr"]
+            row = [update,continent,country,currentConfirmedIncr,confirmedIncr,curedIncr,deadIncr,deadRate]
+            # logger.info('丁香: %r',row)
+            incrVo_rows.append(row)            
+        row = [update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
+        # logger.info("%r\n",row)
+        rows.append(row)
+    
+    name = 'global'
+    columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':rows
+    }
+    save(data)
+    logger.info('丁香网 global records 共有%r条记录。',len(rows))
+
+    name = 'globalTrend'
+    columns = ["update","continent","country","currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr","deadRate"]
+    coreColumns = ["update","continent","country"]
+    data={
+        'table':name,
+        'columns':columns,
+        'coreColumns':coreColumns,
+        'rows':incrVo_rows
+    }
+    save(data)
+    logger.info('丁香网 global trend records 共有%r条记录。',len(incrVo_rows))
+
+
+# 获得中英文名称对照表
+def getNameMap():
+    table = "nameMap"
+    columns = ["EnglishName" , "name"]
+    columns_list = f""" "{'","'.join(columns)}" """
+    # SQL = f"""
+    #     SELECT array_to_json(array_agg(row_to_json(t))) FROM (SELECT {columns_list} FROM "{table}" ) t
+    # """
+    SQL = f"""
+        SELECT {columns_list} FROM "{table}" ;
+    """
+    dbname = 'COVID-19'
+    user='operator'
+    password='5302469'
+    # host='localhost'
+    host='127.0.0.1'
+    port='2012'
+    psql = MyPostgreSQL(dbname=dbname,user=user,password=password,host=host,port=port)    
+    psql.cursor.execute(SQL)
+    result = psql.cursor.fetchall()
+    psql.conn.commit()
+    # logger.info('type()=%r\n,%r',type(result),result)
+    for x in result:
+        key = x[0]
+        value = x[1]
+        nameMap[key] = value
+    # logger.info(nameMap)
+    return nameMap
+
+
+def crawl_NCP_dingxiang():
+    headers = {'User-Agent': random.choice(user_agent_list)}
+    url='https://ncov.dxy.cn/ncovh5/view/pneumonia'
+    timeout = (9,60)
     response = requests.get(url,headers=headers,timeout=timeout)
-    msg = 'response.status_code={}'.format(response.status_code)
-    # logger.info('msg=%r content=%r',msg,response.content) 
     soup = BeautifulSoup(response.content, 'lxml')
 
-    overall_information = re.search(r'(\{"id".*\}\})\}', str(soup.find('script', attrs={'id': 'getStatisticsService'})))
-    logger.info('overall_information=%r',overall_information)
+    # overall_information = re.search(r'(\{"id".*\}\})\}', str(soup.find('script', attrs={'id': 'getStatisticsService'})))
+    # logger.info('overall_information=%r:\n',overall_information)
     # if overall_information:
     #     self.overall_parser(overall_information=overall_information)
 
+    # 全国疫情
     area_information = re.search(r'\[(.*)\]', str(soup.find('script', attrs={'id': 'getAreaStat'})))
-    # if area_information:
-    #     self.area_parser(area_information=area_information)
+    # logger.info('area_information=%r:\n',area_information)
+    if area_information:
+        result = json.loads(area_information.group(0))
+        json_NCP_China(result)
 
+    # 全球疫情
     abroad_information = re.search(r'\[(.*)\]', str(soup.find('script', attrs={'id': 'getListByCountryTypeService2true'})))
+    if abroad_information:
+        result = json.loads(abroad_information.group(0))
+        json_NCP_dx_world(result)
+
+    # logger.info('abroad_information=%r:\n',countries)
     # if abroad_information:
     #     self.abroad_parser(abroad_information=abroad_information)
 
-    news_chinese = re.search(r'\[(.*?)\]', str(soup.find('script', attrs={'id': 'getTimelineServiceundefined'})))
-    # if news_chinese:
-    #     self.news_parser(news=news_chinese)
+   # 新闻
+    news_chinese = re.search(r'\[(.*?)\]', str(soup.find('script', attrs={'id': 'getTimelineService1'})))
+    # logger.info('news_chinese=%r:\n',news_chinese)
+    if news_chinese:
+        result = json.loads(news_chinese.group(0))
+        json_NCP_news(result)
 
-    news_english = re.search(r'\[(.*?)\]', str(soup.find('script', attrs={'id': 'getTimelineService2'})))
+    # news_english = re.search(r'\[(.*?)\]', str(soup.find('script', attrs={'id': 'getTimelineService2'})))
+    # logger.info('news_english=%r:\n',news_english)
     # if news_english:
     #     self.news_parser(news=news_english)
 
+    # 谣言
     rumors = re.search(r'\[(.*?)\]', str(soup.find('script', attrs={'id': 'getIndexRumorList'})))
-    # if rumors:
-    #     self.rumor_parser(rumors=rumors)       
+    # logger.info('rumors=%r:\n',rumors)
+    if rumors:
+        result = json.loads(rumors.group(0))
+        json_NCP_rumors(result)       
 
 def crawl_NCP_qq():
     # 腾讯数据接口
@@ -927,10 +1093,14 @@ if __name__ == '__main__':
     #     with open(filename, 'r') as f:
     #         data = json.load(f)
             # logger.info('type(data)=%r',type(data))
+    nameMap = getNameMap()
+    p0 = multiprocessing.Process(target=crawl_NCP_dingxiang)
     p1 = multiprocessing.Process(target=crawl_NCP)
     p2 = multiprocessing.Process(target=crawl_NCP_qq)
 
+    p0.start()
     p1.start()
     p2.start()
+
     # url = 'https://ncov.dxy.cn/ncovh5/view/pneumonia'
     # crawl_NCP_dingxiang(url=url,timeout=timeout)

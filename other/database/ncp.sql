@@ -105,3 +105,29 @@ CREATE TABLE if not EXISTS news (
 ALTER TABLE IF EXISTS news ADD CONSTRAINT news_unique UNIQUE ("update","title");
 COMMIT;
 
+BEGIN;
+DROP TABLE IF EXISTS "nameMap";
+CREATE TABLE IF NOT EXISTS "nameMap" (
+    "id" serial,
+    "name"  varchar not null,
+    "EnglishName" varchar not null,
+    "shortEnglishName" varchar    
+)
+ALTER TABLE IF EXISTS "nameMap" ADD CONSTRAINT "nameMap_unique" UNIQUE ("name","EnglishName","shortEnglishName");
+COMMIT;
+
+BEGIN;
+DROP TABLE IF EXISTS "globalTrend";
+CREATE TABLE IF NOT EXISTS "globalTrend" (
+  "id" serial,
+  "update" date NOT NULL,
+  "continent" varchar NULL,
+  "country" varchar NOT NULL,
+  "currentConfirmedIncr" INTEGER,
+  "confirmedIncr" INTEGER,
+  "curedIncr" INTEGER,
+  "deadIncr" INTEGER,
+  "deadRate" real  
+);
+ALTER TABLE IF EXISTS "globalTrend" ADD CONSTRAINT "globalTrend_unique" UNIQUE ("update","continent","country");
+COMMIT;
