@@ -295,18 +295,27 @@ def save_to_file(file,data):
 
 # 全球疫情信息分析
 def json_NCP_world(data):
-    records = data
+    if 'result' in data:
+        records = data['result']
+    else:
+        records = data
     NCP_save(records)
 
 # 全国疫情概览
 def json_NCP_China(data):
-    records = data
+    if 'result' in data:
+        records = data['result']
+    else:
+        records = data
     extra = {'continentName':'亚洲','countryName':'中国'}
     NCP_save(records,**extra)
 
 # 新冠新闻
 def json_NCP_news(data):
-    records = data
+    if 'result' in data:
+        records = data['result']
+    else:
+        records = data
     # 从指定json文件中提取数据
     # filename = "news.json"
     # with open(filename, 'r') as f:
@@ -354,7 +363,10 @@ def json_NCP_news(data):
 
 # 新冠谣言
 def json_NCP_rumors(data):
-    records = data
+    if 'result' in data:
+        records = data['result']
+    else:
+        records = data
     # 从指定json文件中提取数据
     # filename = "rumors.json"
     # with open(filename, 'r') as f:
@@ -552,8 +564,9 @@ def json_NCP_QQ_disease_foreign(data):
     incrVo_rows = []
     json_data = json.loads(data)
     records = json_data['foreignList']
+    old_nameMap_length = len(nameMap)
     # logger.info('json_NCP_QQ_disease_foreign:\n %r',records)
-    for record in records:
+    for record in records:              
         remark = ''
         temp=record['date'].split('.')
         sd = '2020-'+temp[0]+'-'+temp[1]
@@ -567,21 +580,8 @@ def json_NCP_QQ_disease_foreign(data):
         dead = record['dead']
         row=[update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
         # logger.info('QQ: %r',row)
-        if 'children' in record:
-            provinceRecords = record['children']
-            for record in provinceRecords:
-                temp=record['date'].split('.')
-                sd = '2020-'+temp[0]+'-'+temp[1]                
-                record['remark'] = ''
-                record['country'] = country
-                record['province'] = record.pop('name')
-                record['update'] = datetime.date.fromisoformat(sd).isoformat()
-                # record['confirmation']=record.pop('nowConfirm')
-                record['totalConfirmation']=record.pop('confirm')
-                record['cure'] = record.pop('heal')
-                totoalProvinceRecords.append(record)                  
         rows.append(row)
-
+         
         if 'confirmAdd' in record:
             currentConfirmedIncr = record['confirmAdd']
         elif 'nowConfirmCompare' in record:
@@ -594,8 +594,29 @@ def json_NCP_QQ_disease_foreign(data):
         # 全球新冠趋势详情
         row = [update,continent,country,currentConfirmedIncr,confirmedIncr,curedIncr,deadIncr]
         # logger.info('QQ: %r',row)
-        incrVo_rows.append(row)               
+        incrVo_rows.append(row)
 
+        if 'children' in record:
+            provinceRecords = record['children']
+            for record in provinceRecords:
+                temp=record['date'].split('.')
+                sd = '2020-'+temp[0]+'-'+temp[1]                
+                record['remark'] = ''
+                record['country'] = country
+                record['province'] = record.pop('name')
+                record['update'] = datetime.date.fromisoformat(sd).isoformat()
+                # record['confirmation']=record.pop('nowConfirm')
+                record['totalConfirmation']=record.pop('confirm')
+                record['cure'] = record.pop('heal')
+                totoalProvinceRecords.append(record)
+                # logger.info('provinceRecord=%r',record)
+                if ('province' in record) and ('nameMap' in record):
+                    key = record['nameMap']
+                    value = record['province']
+                    nameMap[key] = value
+                    # logger.info('nameMap[%r]=%r',key,value)                               
+
+    # 全球疫情信息
     name = 'global'
     columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
     coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
@@ -611,7 +632,7 @@ def json_NCP_QQ_disease_foreign(data):
     # 全球新冠趋势详情
     name = 'globalTrend'
     columns = ["update","continent","country","currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr"]
-    coreColumns = ["update","continent","country"]
+    coreColumns = ["currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr"]
     data={
         'table':name,
         'columns':columns,
@@ -619,7 +640,7 @@ def json_NCP_QQ_disease_foreign(data):
         'rows':incrVo_rows
     }
     save(data)
-    logger.info('丁香网 global trend records 共有%r条记录。',len(incrVo_rows))    
+    logger.info('腾讯 global trend records 共有%r条记录。',len(incrVo_rows))    
 
     # 省或州等一级单位新冠疫情数据
     for record in totoalProvinceRecords:
@@ -684,6 +705,24 @@ def json_NCP_QQ_disease_foreign(data):
     save(data)
     logger.info('globalSummaryRecords 共有%r条记录。',len(rows))
 
+    # 保存中英文名称对照表
+    if len(nameMap) > old_nameMap_length :
+        rows =[]
+        for EnglishName,name in nameMap.items():
+            row = [EnglishName,name]
+            rows.append(row)
+        name = 'nameMap'
+        columns = ['EnglishName','name']
+        coreColumns = ['name']
+        data={
+            'table':name,
+            'columns':columns,
+            'coreColumns':coreColumns,
+            'rows':rows
+        }
+        save(data)
+        logger.info('QQ:nameMap 共有%r条记录。',len(rows))    
+
 # https://lab.isaaclin.cn/nCoV/api 网站新冠疫情数据爬取
 def crawl_NCP():
     try:
@@ -695,7 +734,8 @@ def crawl_NCP():
         response = requests.get(url,headers=headers,timeout=timeout)
         response.raise_for_status()
         data = response.json()
-        data = data['result']
+        # logger.info('area:\n%r',data)
+        # data = data['result']
         json_NCP_world(data)
         
         # 防止服务器拒绝
@@ -706,11 +746,12 @@ def crawl_NCP():
         response = requests.get(url,headers=headers,timeout=timeout)
         response.raise_for_status()
         data = response.json()
-        data = data['result']
+        # logger.info('overall:\n%r',data)
+        # data = data['result']
         json_NCP_China(data)
 
         # 防止服务器拒绝
-        # time.sleep(3)        
+        time.sleep(3)        
 
         # 爬取新冠新闻
         url = "https://lab.isaaclin.cn/nCoV/api/news"
@@ -718,7 +759,8 @@ def crawl_NCP():
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
         response.raise_for_status()
         data = response.json()
-        data = data['result']
+        # logger.info('news:\n%r',data)
+        # data = data['result']
         json_NCP_news(data)
 
         # 防止服务器拒绝
@@ -730,13 +772,12 @@ def crawl_NCP():
         response = requests.get(url,headers=headers,params=params,timeout=timeout)
         response.raise_for_status()
         data = response.json()
-        data = data['result']
+        # logger.info('rumors:\n%r',data)
+        # data = data['result']
         json_NCP_rumors(data)
 
- 
     except Exception as e:
-        msg = 'crawl_NCP failure：{}'.format(e)
-        logger.error(msg)
+        logger.error('crawl_NCP failure! %r',e)
 
 # 丁香网新冠全球疫情
 def json_NCP_dx_world(data):
@@ -808,7 +849,7 @@ def json_NCP_dx_world(data):
 
     name = 'globalTrend'
     columns = ["update","continent","country","currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr","deadRate"]
-    coreColumns = ["update","continent","country"]
+    coreColumns = ["currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr","deadRate"]
     data={
         'table':name,
         'columns':columns,
@@ -1095,11 +1136,11 @@ if __name__ == '__main__':
             # logger.info('type(data)=%r',type(data))
     nameMap = getNameMap()
     p0 = multiprocessing.Process(target=crawl_NCP_dingxiang)
-    p1 = multiprocessing.Process(target=crawl_NCP)
+    # p1 = multiprocessing.Process(target=crawl_NCP)
     p2 = multiprocessing.Process(target=crawl_NCP_qq)
 
     p0.start()
-    p1.start()
+    # p1.start()
     p2.start()
 
     # url = 'https://ncov.dxy.cn/ncovh5/view/pneumonia'
