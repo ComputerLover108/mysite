@@ -224,33 +224,33 @@ def NCP_save(records,**extra):
     if global_rows:
         name = 'global'
         columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-        coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+        updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
         data={
             'table':name,
             'columns':columns,
-            'coreColumns':coreColumns,
+            'updateColumns':updateColumns,
             'rows':global_rows
         }
         save(data)
     if country_rows:
         name = 'global'
         columns = ["update","country","province","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-        coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+        updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
         data={
             'table':name,
             'columns':columns,
-            'coreColumns':coreColumns,
+            'updateColumns':updateColumns,
             'rows':country_rows
         }
         save(data)        
     if province_rows:
         name = 'province'
         columns = ["update","country","province","city","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-        coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+        updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
         data={
             'table':name,
             'columns':columns,
-            'coreColumns':coreColumns,
+            'updateColumns':updateColumns,
             'rows':province_rows
         }
         save(data)        
@@ -268,10 +268,10 @@ def NCP_save(records,**extra):
 def save(record):
     table = record['table']
     columns = record['columns'] 
-    coreColumns = record['coreColumns']
+    updateColumns = record['updateColumns']
     rows = record['rows']
     SQL_snippet =f'ON CONFLICT ON CONSTRAINT "{table}_unique" DO UPDATE SET '
-    for col in coreColumns:
+    for col in updateColumns:
        SQL_snippet += f' "{col}" = EXCLUDED."{col}",'
     SQL = f"""insert into "{table}" ("{'","'.join(columns)}") values ({','.join(['%s'] * len(columns))}) """
     SQL_snippet = SQL_snippet.rstrip(',')+';'
@@ -352,11 +352,11 @@ def json_NCP_news(data):
         # logger.info("news:%r,%r,%r,%r",update,title,summary,content)
     name = 'news'
     columns = ["update","title","summary","infoSource","sourceUrl"]
-    coreColumns = ["update","title"]
+    updateColumns = ["update","title"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
@@ -397,11 +397,11 @@ def json_NCP_rumors(data):
         # logger.info("rumors:%r,%r,%r,%r",update,title,summary,content)
     name = 'rumors'
     columns = ["update","title","summary","content"]
-    coreColumns = ["title","summary","content"]
+    updateColumns = ["title","summary","content"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
@@ -481,11 +481,11 @@ def json_NCP_QQ_disease(data):
     name = "country"
     constraint='country_unique'
     columns = ["update","country","province","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
@@ -513,11 +513,11 @@ def json_NCP_QQ_disease(data):
     name = "province"
     constraint='province_unique'
     columns = ["update","country","province","city","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
@@ -546,11 +546,11 @@ def json_NCP_QQ_disease_other(data):
 
     name = 'global'
     columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
@@ -582,19 +582,19 @@ def json_NCP_QQ_disease_foreign(data):
         # logger.info('QQ: %r',row)
         rows.append(row)
          
-        if 'confirmAdd' in record:
-            currentConfirmedIncr = record['confirmAdd']
-        elif 'nowConfirmCompare' in record:
-            currentConfirmedIncr = record['nowConfirmCompare']
-        else:
-            currentConfirmedIncr = None
-        confirmedIncr = record['confirmCompare'] if 'confirmCompare' in record else None
-        curedIncr = record['healCompare'] if 'healCompare' in record else None
-        deadIncr = record['deadCompare'] if 'deadCompare' in record else None
-        # 全球新冠趋势详情
-        row = [update,continent,country,currentConfirmedIncr,confirmedIncr,curedIncr,deadIncr]
-        # logger.info('QQ: %r',row)
-        incrVo_rows.append(row)
+        # # 全球新冠趋势详情
+        # if 'confirmAdd' in record:
+        #     currentConfirmedIncr = record['confirmAdd']
+        # elif 'nowConfirmCompare' in record:
+        #     currentConfirmedIncr = record['nowConfirmCompare']
+        # else:
+        #     currentConfirmedIncr = None
+        # confirmedIncr = record['confirmCompare'] if 'confirmCompare' in record else None
+        # curedIncr = record['healCompare'] if 'healCompare' in record else None
+        # deadIncr = record['deadCompare'] if 'deadCompare' in record else None
+        # row = [update,continent,country,currentConfirmedIncr,confirmedIncr,curedIncr,deadIncr]
+        # # logger.info('QQ: %r',row)
+        # incrVo_rows.append(row)
 
         if 'children' in record:
             provinceRecords = record['children']
@@ -619,28 +619,28 @@ def json_NCP_QQ_disease_foreign(data):
     # 全球疫情信息
     name = 'global'
     columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
     logger.info('global records 共有%r条记录。',len(rows))
 
-    # 全球新冠趋势详情
-    name = 'globalTrend'
-    columns = ["update","continent","country","currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr"]
-    coreColumns = ["currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr"]
-    data={
-        'table':name,
-        'columns':columns,
-        'coreColumns':coreColumns,
-        'rows':incrVo_rows
-    }
-    save(data)
-    logger.info('腾讯 global trend records 共有%r条记录。',len(incrVo_rows))    
+    # # 全球新冠趋势详情
+    # name = 'globalTrend'
+    # columns = ["update","continent","country","currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr"]
+    # updateColumns = ["currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr"]
+    # data={
+    #     'table':name,
+    #     'columns':columns,
+    #     'updateColumns':updateColumns,
+    #     'rows':incrVo_rows
+    # }
+    # save(data)
+    # logger.info('腾讯 global trend records 共有%r条记录。',len(incrVo_rows))    
 
     # 省或州等一级单位新冠疫情数据
     for record in totoalProvinceRecords:
@@ -660,11 +660,11 @@ def json_NCP_QQ_disease_foreign(data):
     name = "country"
     constraint='country_unique'
     columns = ["update","country","province","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
@@ -695,11 +695,11 @@ def json_NCP_QQ_disease_foreign(data):
 
     name = 'globalSummary'
     columns = ["update","confirm","cure","dead","cureRate","deadRate"]
-    coreColumns = ["confirm","cure","dead","cureRate","deadRate"]
+    updateColumns = ["confirm","cure","dead","cureRate","deadRate"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
@@ -713,11 +713,11 @@ def json_NCP_QQ_disease_foreign(data):
             rows.append(row)
         name = 'nameMap'
         columns = ['EnglishName','name']
-        coreColumns = ['name']
+        updateColumns = ['name']
         data={
             'table':name,
             'columns':columns,
-            'coreColumns':coreColumns,
+            'updateColumns':updateColumns,
             'rows':rows
         }
         save(data)
@@ -785,6 +785,7 @@ def json_NCP_dx_world(data):
     records = data
     rows = []
     incrVo_rows = []
+    nameMap_rows = []
     for record in records:
         # logger.info('%r',record)
         if  "modifyTime" in record:
@@ -804,12 +805,14 @@ def json_NCP_dx_world(data):
         countryEnglishShortName = record["countryShortCode"]
         countryEnglishName = record["countryFullName"]
         countryShortName = record["provinceShortName"]
-        # country = record["provinceName"]
-        if countryEnglishName in nameMap:
-            country = nameMap[countryEnglishName]
-        else:
-            logger.info('%r 没有找到中文名字！')
-            continue
+        country = record["provinceName"]
+        nameMap_rows.append([country,countryEnglishName,countryEnglishShortName])
+        # if countryEnglishName in nameMap:
+        #     country = nameMap[countryEnglishName]
+        # else:
+        #     logger.info('%r 没有找到中文名字！',countryEnglishName)
+        #     country = record["provinceName"]
+        #     # continue
         confirmation = record["currentConfirmedCount"]
         totalConfirmation = record["confirmedCount"]
         suspect = record["suspectedCount"]
@@ -817,10 +820,8 @@ def json_NCP_dx_world(data):
         dead = record["deadCount"]
         remark = record["comment"]
 
-        deadRate = record["deadRate"] if "deadRate" in record else ''
-        # deadCountRank = record["deadCountRank"] if "deadCountRank" in record else ''
-        # deadRateRank = record["deadRateRank"] if "deadRateRank" in record else ''
         # 全球新冠趋势详情
+        deadRate = record["deadRate"] if "deadRate" in record else ''
         if "incrVo" in record:
             temp = record["incrVo"]
             # logger.info(temp)
@@ -830,6 +831,8 @@ def json_NCP_dx_world(data):
             deadIncr = record["incrVo"]["deadIncr"]
             row = [update,continent,country,currentConfirmedIncr,confirmedIncr,curedIncr,deadIncr,deadRate]
             # logger.info('丁香: %r',row)
+            if country == "中国" or countryEnglishName == "China" :
+                logger.info('%r',row)
             incrVo_rows.append(row)            
         row = [update,continent,country,confirmation,totalConfirmation,suspect,cure,dead,remark]
         # logger.info("%r\n",row)
@@ -837,11 +840,11 @@ def json_NCP_dx_world(data):
     
     name = 'global'
     columns = ["update","continent","country","confirmation","totalConfirmation","suspect","cure","dead","remark"]
-    coreColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
+    updateColumns = ["confirmation","totalConfirmation","suspect","cure","dead","remark"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':rows
     }
     save(data)
@@ -849,15 +852,27 @@ def json_NCP_dx_world(data):
 
     name = 'globalTrend'
     columns = ["update","continent","country","currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr","deadRate"]
-    coreColumns = ["currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr","deadRate"]
+    updateColumns = ["currentConfirmedIncr","confirmedIncr","curedIncr","deadIncr","deadRate"]
     data={
         'table':name,
         'columns':columns,
-        'coreColumns':coreColumns,
+        'updateColumns':updateColumns,
         'rows':incrVo_rows
     }
     save(data)
     logger.info('丁香网 global trend records 共有%r条记录。',len(incrVo_rows))
+
+    name = 'nameMap'
+    columns = ['name','EnglishName','shortEnglishName']
+    updateColumns = ['EnglishName','shortEnglishName']
+    data={
+        'table':name,
+        'columns':columns,
+        'updateColumns':updateColumns,
+        'rows':nameMap_rows
+    }
+    save(data)
+    logger.info('丁香网 nameMap records 共有%r条记录。',len(nameMap_rows))    
 
 
 # 获得中英文名称对照表
