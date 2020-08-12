@@ -723,6 +723,32 @@ def json_NCP_QQ_disease_foreign(data):
         save(data)
         logger.info('QQ:nameMap 共有%r条记录。',len(rows))    
 
+    globalStatis_record = json_data["globalStatis"]
+    std = globalStatis_record['lastUpdateTime']
+    update = datetime.datetime.fromisoformat(std).date()
+    confirm = globalStatis_record['nowConfirm']
+    totalConfirmation = globalStatis_record['confirm']
+    cure = globalStatis_record['heal']
+    dead = globalStatis_record['dead']
+    confirmAdd = globalStatis_record['nowConfirmAdd']
+    totalConfirmationAdd = globalStatis_record['confirmAdd']
+    cureAdd = globalStatis_record['healAdd']
+    deadAdd = globalStatis_record['deadAdd']
+    row = [update,confirm,totalConfirmation,cure,dead,confirmAdd,totalConfirmationAdd,cureAdd,deadAdd]
+    logger.info('globalStatis \n%r',row)
+    rows = []
+    rows.append(row)
+    name = 'globalSummary'
+    columns = ["update","confirm","totalConfirmation","cure","dead","confirmAdd","totalConfirmationAdd","cureAdd","deadAdd"]
+    updateColumns = ["confirm","totalConfirmation","cure","dead","confirmAdd","totalConfirmationAdd","cureAdd","deadAdd"]
+    data={
+        'table':name,
+        'columns':columns,
+        'updateColumns':updateColumns,
+        'rows':rows
+    }
+    save(data)       
+
 # https://lab.isaaclin.cn/nCoV/api 网站新冠疫情数据爬取
 def crawl_NCP():
     try:

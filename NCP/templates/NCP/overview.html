@@ -37,6 +37,7 @@
                         {% else %}
                             <td scope="col">                           
                                 {{a}}
+                                <!-- String({{a}}).replace(/(\d)(?=(\d{4})+$)/g, "$1,") -->
                             </td>
                         {% endif %}
                         {% endfor %}

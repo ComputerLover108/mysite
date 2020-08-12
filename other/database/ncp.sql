@@ -131,3 +131,21 @@ CREATE TABLE IF NOT EXISTS "globalTrend" (
 );
 ALTER TABLE IF EXISTS "globalTrend" ADD CONSTRAINT "globalTrend_unique" UNIQUE ("update","continent","country");
 COMMIT;
+
+BEGIN;
+CREATE TABLE IF NOT EXISTS "globalSummary" (
+    "id" serial,
+    "update" date NOT NULL,
+    "confirm" INTEGER,
+    "totalConfirmation" INTEGER,
+    "cure" INTEGER,
+    "dead" INTEGER,
+    "confirmAdd" INTEGER,
+    "totalConfirmationAdd" INTEGER,
+    "cureAdd" INTEGER,
+    "deadAdd" INTEGER,
+    "cureRate" REAL,
+    "deadRate" REAL
+);
+ALTER TABLE IF EXISTS "globalSummary" ADD CONSTRAINT "globalSummary_unique" UNIQUE (update);
+COMMIT;
