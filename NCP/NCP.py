@@ -1045,6 +1045,16 @@ def crawl_NCP_qq():
 def initDB():
     SQL = """
         BEGIN;
+
+        ALTER TABLE IF EXISTS "global" DROP CONSTRAINT "global_unique";
+        ALTER TABLE IF EXISTS "globalTrend" DROP CONSTRAINT "globalTrend_unique";
+        ALTER TABLE IF EXISTS "globalSummary" DROP CONSTRAINT "globalSummary_unique";
+        ALTER TABLE IF EXISTS "country" DROP CONSTRAINT "country_unique";
+        ALTER TABLE IF EXISTS "province" DROP CONSTRAINT "province_unique";
+        ALTER TABLE IF EXISTS "news" DROP CONSTRAINT "news_unique";
+        ALTER TABLE IF EXISTS "rumors" DROP CONSTRAINT "rumors_unique";
+        ALTER TABLE IF EXISTS "nameMap" DROP CONSTRAINT "nameMap_unique";
+        
         DROP TABLE IF EXISTS "globalTrend" CASCADE;
         DROP TABLE IF EXISTS "globalSummary" CASCADE;
         DROP TABLE IF EXISTS "global" CASCADE;
@@ -1139,15 +1149,6 @@ def initDB():
             "cureRate" REAL,
             "deadRate" REAL
         );
-
-        ALTER TABLE IF EXISTS "global" DROP CONSTRAINT "global_unique";
-        ALTER TABLE IF EXISTS "globalTrend" DROP CONSTRAINT "globalTrend_unique";
-        ALTER TABLE IF EXISTS "globalSummary" DROP CONSTRAINT "globalSummary_unique";
-        ALTER TABLE IF EXISTS "country" DROP CONSTRAINT "country_unique";
-        ALTER TABLE IF EXISTS "province" DROP CONSTRAINT "province_unique";
-        ALTER TABLE IF EXISTS "news" DROP CONSTRAINT "news_unique";
-        ALTER TABLE IF EXISTS "rumors" DROP CONSTRAINT "rumors_unique";
-        ALTER TABLE IF EXISTS "nameMap" DROP CONSTRAINT "nameMap_unique";
 
         ALTER TABLE IF EXISTS "global" ADD CONSTRAINT "global_unique" UNIQUE ("update","continent","country");
         ALTER TABLE IF EXISTS "country" ADD CONSTRAINT "country_unique" UNIQUE ("update","country","province");

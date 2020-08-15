@@ -10,6 +10,24 @@ class Namemap(models.Model):
         db_table = 'nameMap'
         unique_together = (('name', 'englishname'),)
 
+class GlobalSummary(models.Model):
+    id = models.AutoField(db_column='id',primary_key=True)
+    update = models.DateField()
+    confirmation = models.IntegerField(blank=True, null=True)
+    totalConfirmation = models.IntegerField(blank=True, null=True)  # Field name made lowercase.
+    cure = models.IntegerField(blank=True, null=True)
+    dead = models.IntegerField(blank=True, null=True)
+    confirmAdd = models.IntegerField(blank=True,null=True)
+    totalConfirmationAdd = models.IntegerField(blank=True,null=True)
+    cureAdd = models.IntegerField(blank=True,null=True) 
+    deadAdd = models.IntegerField(blank=True,null=True)
+    cureRate = models.FloatField(blank=True,null=True)
+    deadRate = models.FloatField(blank=True,null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'globalSummary'
+        unique_together = ('update',)
 class Global(models.Model):
     id = models.AutoField(db_column='id',primary_key=True)
     update = models.DateField()

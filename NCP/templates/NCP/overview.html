@@ -1,23 +1,54 @@
 {% extends "echarts.html" %}
+{% load static %}
 {% block title %}
 {{title}}
 {% endblock title %}
+{% block CSS %}
+    <link rel="stylesheet" href="{% static 'DataTables/DataTables-1.10.21/css/dataTables.bootstrap4.min.css' %}">
+    <style type="text/css">
+        h1,h2,h3 { text-align:center }
+    </style>    
+{% endblock CSS %}
 {% block content %}
 <div class=".container-fluid ">
-    <div class="row">
-        <div class="col">
+    <div class="row justify-content-center">
+        <div class="col-8">
             <h1>新冠肺炎疫情</h1>
             <h2>{{lastday}}</h2>
         </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <td>确诊</td>
+                    <td>累计确诊</td>
+                    <td>治愈</td>
+                    <td>死亡</td>
+                    <td>新增确诊</td>
+                    <td>累计新增确诊</td>
+                    <td>新增治愈</td>
+                    <td>新增死亡</td>
+                    <td>治愈率</td>
+                    <td>死亡率</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    {% for x in globalSummaryData %}
+                    <td>{{x}}</td>
+                    {% endfor %}    
+                </tr>
+            </tbody>
+        </table>
     </div>
     <div class="row">
-        <div class="col-4">
-            <h2>确诊人数前十国家</h2>
-            <table class="table">
+        <div class="col-6">
+            <!-- <table id="overall" class="display" style="width:100%"> -->
+            <h2>当日疫情统计</h2>
+            <table id="overall" class="table" >                
                 <thead>
-                    <tr scope="row">
-                        <th scope="col">序号</th>
-                        {% comment %} <th scope="col">日期</th> {% endcomment %}
+                    <tr>
+                        <th scope="col">日期</th>
+                        <th scope="col">区域</th>
                         <th scope="col">国家</th>
                         <th scope="col">确诊</th>
                         <th scope="col">累计确诊</th>
@@ -25,28 +56,21 @@
                         <th scope="col">死亡</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for x in topCountry %}
-                    <tr scope="row">
-                        <td scope="col">{{forloop.counter}}</td>
-                        {% for a in x %}
-                        {% if a == "中国" %}
-                            <td scope="col">
-                                <p class="text-danger">{{a}}</p>
-                            </td>
-                        {% else %}
-                            <td scope="col">                           
-                                {{a}}
-                                <!-- String({{a}}).replace(/(\d)(?=(\d{4})+$)/g, "$1,") -->
-                            </td>
-                        {% endif %}
-                        {% endfor %}
+                <tfoot>
+                    <tr>
+                        <th scope="col">日期</th>
+                        <th scope="col">区域</th>
+                        <th scope="col">国家</th>
+                        <th scope="col">确诊</th>
+                        <th scope="col">累计确诊</th>
+                        <th scope="col">治愈</th>
+                        <th scope="col">死亡</th>
                     </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                </tfoot>
+            </table>            
         </div>        
-        <div class="col-8">
+        <div class="col-6">
+            <h2>疫情趋势</h2>
             <div id="main" style="width:100%;height:1000px;"></div>
         </div>
     </div>
@@ -74,6 +98,12 @@
     //         }    
     //     }
     // )
+    $(document).ready(function() {
+        $('#overall').dataTable( {
+            "ajax": "{% url 'overall' %}"
+        } );
+    } );
+
     setTimeout(function () {
     var myChart = echarts.init(document.getElementById('main'));
     var option = {
@@ -158,4 +188,5 @@
 
 });
 </script>
+<script src="{% static 'DataTables/DataTables-1.10.21/js/jquery.dataTables.min.js' %}"></script>
 {% endblock JS %}

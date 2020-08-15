@@ -9,7 +9,8 @@
     <title>{% block title %}{% endblock title %}</title>
 
     <!-- Bootstrap -->
-    <link rel="stylesheet" href="{% static 'bootstrap-4.4.1-dist/css/bootstrap.min.css' %}">
+    <!-- <link rel="stylesheet" href="{% static 'bootstrap-4.4.1-dist/css/bootstrap.min.css' %}"> -->
+    <link rel="stylesheet" href="{% static 'bootstrap-4.4.1-dist/css/bootstrap.css' %}">
     {% block CSS %}
         <style type="text/css">
             h1,h2,h3 { text-align:center }
@@ -36,6 +37,7 @@
     <script src="{% static 'jQuery/jquery-3.4.1.min.js' %}"></script>
     <script src="{% static 'js/popper.min.js' %}"></script>
     <script src="{% static 'bootstrap-4.4.1-dist/js/bootstrap.min.js' %}"></script>
+    <!-- <script src="{% static 'DataTables/DataTables-1.10.21/js/jquery.dataTables.min.js' %}"></script> -->
     <!-- <script src="{% static "echarts/echarts.min.js" %}"></script> -->
 	{% block JS %} {% endblock JS%}    
   </body>

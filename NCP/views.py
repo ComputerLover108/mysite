@@ -18,6 +18,11 @@ def overview(request):
     with connection.cursor() as cursor:
         cursor.execute(SQL)
         lastDay = cursor.fetchone()[0]
+
+    SQL = 'SELECT "confirm","totalConfirmation","cure","dead","confirmAdd","totalConfirmationAdd","cureAdd","deadAdd","cureRate","deadRate" FROM "globalSummary" gs WHERE "update" = current_date;'
+    with connection.cursor() as cursor:
+        cursor.execute(SQL)
+        globalSummaryData = cursor.fetchone()    
     # print('lastDay=%r:type=%r',lastDay,type(lastDay))
     # logger.info('lastDay=%r:type=%r',lastDay,type(lastDay))
     topCountry = Global.objects\
@@ -48,6 +53,7 @@ def overview(request):
         .values('update','country','confirmation')   
     context['topCountry'] = topCountry
     context['lastday'] = lastDay
+    context['globalSummaryData'] = globalSummaryData
     x = []
     temp = {}
     countries = Global.objects.distinct('country').values_list('country')
@@ -86,22 +92,23 @@ def overview(request):
     return render(request,'NCP/overview.html',context)
 
 def overall(request):
+    today = date.today()
+    # logger.info('today=%r',today)
     data = Global.objects\
-    .values('update',"continent","country","confirmation","totalconfirmation","suspect","cure","dead","remark", )\
-    .filter(provinceName='')
-    # data = Global.objects.filter(provinceName='')
-    result=[]
-    for x in data:
-        x['update'] = x['update'].isoformat()
-        # logger.info('update type=%r value=%r',type(x['update']),x['update'])
-        # logger.info('row=%r',x)
-        result.append(x)
-        # logger.info('result=%r\n',result)
+    .values_list('update',"continent","country","confirmation","totalconfirmation","cure","dead", )\
+    .filter(update=today)
+    # result=[]
+    # for x in data:
+    #     x['update'] = x['update'].isoformat()
+    #     result.append(x)
     # data=json.dumps(result,ensure_ascii=False)
     # return HttpResponse(data,content_type="application/json")
+    logger.info('data=%r',data)    
     data = {
-        'NCP' : result
+        'data' : list(data)
     }
+    # data = list(data)
+    # logger.info('data=%r',data)
     return JsonResponse(data,safe=False,json_dumps_params={'ensure_ascii':False})
 
 def foreign(request):
