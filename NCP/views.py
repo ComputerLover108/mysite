@@ -5,7 +5,7 @@ from django.db.models import Q,Sum
 import json
 from datetime import date
 from django.db import connection
-from NCP.models import Global
+from NCP.models import Global,GlobalSummary
 import logging
 # logger = logging.getLogger(__name__)
 logger = logging.getLogger('django')
@@ -14,21 +14,27 @@ logger = logging.getLogger('django')
 def overview(request):
     context = {'title':'新冠肺炎疫情'} 
     today = date.today()
-    SQL = 'select max(update) from "global";'
-    with connection.cursor() as cursor:
-        cursor.execute(SQL)
-        lastDay = cursor.fetchone()[0]
-
-    SQL = 'SELECT "confirm","totalConfirmation","cure","dead","confirmAdd","totalConfirmationAdd","cureAdd","deadAdd","cureRate","deadRate" FROM "globalSummary" gs WHERE "update" = current_date;'
-    with connection.cursor() as cursor:
-        cursor.execute(SQL)
-        globalSummaryData = cursor.fetchone()    
-    # print('lastDay=%r:type=%r',lastDay,type(lastDay))
+    # SQL = 'select max(update) from "global";'
+    # with connection.cursor() as cursor:
+    #     cursor.execute(SQL)
+    #     lastDay = cursor.fetchone()[0]
+    lastDay = Global.objects.latest('update').update
     # logger.info('lastDay=%r:type=%r',lastDay,type(lastDay))
+    # SQL = 'SELECT "confirm","totalConfirmation","cure","dead","confirmAdd","totalConfirmationAdd","cureAdd","deadAdd","cureRate","deadRate" FROM "globalSummary" gs WHERE "update" = current_date;'
+    # with connection.cursor() as cursor:
+    #     cursor.execute(SQL)
+    #     globalSummaryData = cursor.fetchone()    
+
+    globalSummaryData = GlobalSummary.objects\
+    .filter(update=lastDay)\
+    .values_list("confirmation","totalConfirmation","cure","dead","confirmAdd","totalConfirmationAdd","cureAdd","deadAdd","cureRate","deadRate")
+    # globalSummaryData = list(globalSummaryData)
+    logger.info('type(globalSummaryData)=%r,globalSummaryData=%r',type(globalSummaryData),globalSummaryData)
+
     topCountry = Global.objects\
     .filter(update=lastDay)\
-    .values_list('country','confirmation','totalconfirmation','cure','dead')\
-    .order_by('-totalconfirmation')[:20]
+    .values_list('country','confirmation','totalConfirmation','cure','dead')\
+    .order_by('-totalConfirmation')[:10]
     countries = []
     for x in topCountry:
         countries.append(x[0])
@@ -95,7 +101,7 @@ def overall(request):
     today = date.today()
     # logger.info('today=%r',today)
     data = Global.objects\
-    .values_list('update',"continent","country","confirmation","totalconfirmation","cure","dead", )\
+    .values_list('update',"continent","country","confirmation","totalConfirmation","cure","dead", )\
     .filter(update=today)
     # result=[]
     # for x in data:
@@ -103,41 +109,33 @@ def overall(request):
     #     result.append(x)
     # data=json.dumps(result,ensure_ascii=False)
     # return HttpResponse(data,content_type="application/json")
-    logger.info('data=%r',data)    
+    # logger.info('data=%r',data)    
+    data = list(data) #序列化QuerySet
     data = {
-        'data' : list(data)
+        'data' : data
     }
-    # data = list(data)
-    # logger.info('data=%r',data)
     return JsonResponse(data,safe=False,json_dumps_params={'ensure_ascii':False})
 
-def foreign(request):
-    # SQL='''
-    #     -- SELECT "update",sum("confirmation") FROM "NCP" WHERE "country" !='中国' GROUP BY "update" ORDER BY "update" ;
-    #     SELECT "update",
-    #            sum("confirmation") as "确诊",
-    #            SUM("totalconfirmation") as "累计确诊", 
-    #            SUM("dead") as "死亡", 
-    #            SUM("cure") as "治愈"
-    #     FROM "NCP"
-    #     WHERE "country" !='中国'
-    #     GROUP BY "update" 
-    #     ORDER BY "update" ;        
-    #     '''
-    # with connection.cursor() as cursor:
-    #     cursor.execute(SQL)
-    #     data = cursor.fetchall()
-   
+def foreign(request): 
     data = Global.objects\
         .filter(~Q(country='中国'))\
-        .values('update')\
+        .values_list('update')\
         .annotate(confirmation=Sum("confirmation"))\
         .order_by('update')
-    data=list(data)
-    # logger.info('type(data)=%r\n data=%r',type(data),data)        
-    # data = {
-    #     'NCP_foreign' : data
-    # }
+    # data=list(data)    
+    china_data = Global.objects.filter(country='中国')\
+        .values_list('update','confirmation','totalConfirmation','cure','dead')\
+        .order_by('update')
+    logger.info('type(china_data)=%r\n china_data=%r',type(china_data),china_data)
+    
+    world_data =  GlobalSummary.objects\
+        .values_list('update','confirmation','totalConfirmation','cure','dead')\
+        .order_by('update')
+    logger.info('type(world_data)=%r\n world_data=%r',type(world_data),world_data)            
+
+    data = {
+        'NCP_foreign' : list(data)
+    }
     return JsonResponse(data,safe=False,json_dumps_params={'ensure_ascii':False})
 
 def confirmation(request,**args):
@@ -145,7 +143,7 @@ def confirmation(request,**args):
 
     '''
 
-def totalconfirmation():
+def totalConfirmation():
     pass
 
 def suspect():

@@ -417,8 +417,12 @@ def json_NCP_QQ_disease(data):
     totalCityRecords=[]     
     rows = []
     records = json_data['areaTree']
+    sd = json_data['lastUpdateTime']
+    # logger.info('sd=%r',sd)
+    update = sd.split(' ')[0]
+    logger.info('update=%r',update)
     for record in records:
-        update = datetime.date.fromtimestamp(time.time()).isoformat()
+        # update = datetime.date.fromtimestamp(time.time()).isoformat()
         continent = '亚洲'
         country = '中国'
         remark = ''
@@ -522,6 +526,29 @@ def json_NCP_QQ_disease(data):
     }
     save(data)
     logger.info('China totalCityRecords 共有%r条记录。',len(totalCityRecords))
+
+    record = json_data['chinaAdd']
+    rows = []
+    continent = '亚洲'
+    country = '中国'           
+    currentConfirmedIncr = record['nowConfirm']
+    confirmedIncr = record['confirm']
+    deadIncr = record['dead']
+    curedIncr = record['heal']
+    row = [update,continent,country,currentConfirmedIncr,confirmedIncr,deadIncr,curedIncr]
+    logger.info('current china in globalTrend=%r',row)
+    rows.append(row)
+
+    name = 'globalTrend'
+    columns = ["update","continent","country","currentConfirmedIncr","confirmedIncr","deadIncr","curedIncr"]
+    updateColumns = ["currentConfirmedIncr","confirmedIncr","deadIncr","curedIncr"]
+    data={
+        'table':name,
+        'columns':columns,
+        'updateColumns':updateColumns,
+        'rows':rows
+    }
+    save(data)     
     
 # QQ新冠全国疫情历史数据
 def json_NCP_QQ_disease_other(data):
@@ -554,7 +581,36 @@ def json_NCP_QQ_disease_other(data):
         'rows':rows
     }
     save(data)
-    logger.info('China total records 共有%r条记录。',len(rows))    
+    logger.info('China total records 共有%r条记录。',len(rows))
+
+    globalTrend_records = json_data['chinaDayAddList']
+    rows = []
+    for record in globalTrend_records:
+        continent = '亚洲'
+        country = '中国'            
+        temp=record['date'].split('.')
+        year = datetime.date.today().year
+        temp.insert(0,str(year))
+        sd = '-'.join(temp)
+        update = datetime.date.fromisoformat(sd).isoformat()
+        confirmedIncr = record['confirm']
+        deadIncr = record['dead']
+        curedIncr = record['heal']
+        deadRate = record['deadRate']
+        row = [update,continent,country,confirmedIncr,deadIncr,curedIncr,deadRate]
+        # logger.info('china in globalTrend=%r',row)
+        rows.append(row)
+
+    name = 'globalTrend'
+    columns = ["update","continent","country","confirmedIncr","deadIncr","curedIncr","deadRate"]
+    updateColumns = ["confirmedIncr","deadIncr","curedIncr","deadRate"]
+    data={
+        'table':name,
+        'columns':columns,
+        'updateColumns':updateColumns,
+        'rows':rows
+    }
+    save(data)    
 
 # QQ新冠全球疫情
 def json_NCP_QQ_disease_foreign(data):
