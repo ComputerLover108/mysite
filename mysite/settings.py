@@ -96,7 +96,7 @@ DATABASES = {
         'NAME': 'COVID-19',
         'USER': 'operator',
         'PASSWORD': '5302469',
-        # 'HOST': '192.168.0.122',
+        # 'HOST': '192.168.0.111',
         'HOST': '127.0.0.1',
         'PORT': '2012',
     }     
